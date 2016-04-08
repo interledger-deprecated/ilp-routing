@@ -57,22 +57,41 @@ class Route {
   }
 
   combine (route) {
-    const combinedPoints = this.points.concat(route.points)
-    combinedPoints.sort((a, b) => a[0] - b[0])
-    return new Route(combinedPoints.map((p) => [
-      p[0],
-      Math.max(this.amountAt(p[0]), route.amountAt(p[0]))
-    ]))
+    return new Route(
+      this._combineWithPoints(route.points)
+        .concat(route._combineWithPoints(this.points))
+        .concat(this._intersect(route))
+        .concat(route._intersect(this))
+        .sort(comparePoints))
+  }
+
+  _combineWithPoints (points) {
+    if (this.points.length === 0) return points
+    return points.map((point) => [
+      point[0],
+      Math.max(point[1], this.amountAt(point[0]))
+    ])
+  }
+
+  _intersect (route) {
+    if (route.points.length === 0) return []
+    return this.points.map((point) => {
+      const otherX = route.amountReverse(point[1])
+      return [otherX, this.amountAt(otherX)]
+    }).filter(pointNotInfinity)
   }
 
   join (route) {
-    const combinedPoints = this.points.concat(route.points)
-    combinedPoints.sort((a, b) => a[0] - b[0])
-    return new Route(combinedPoints.map((p) => [
-      p[0],
-      route.amountAt(this.amountAt(p[0]))
-    ]))
+    return new Route(
+      this.points
+        .map((p) => [ p[0], route.amountAt(p[1]) ])
+      .concat(route.points
+        .map((p) => [ this.amountReverse(p[0]), p[1] ])
+      ).sort(comparePoints))
   }
 }
+
+function pointNotInfinity (point) { return point[0] !== Infinity }
+function comparePoints (a, b) { return a[0] - b[0] }
 
 module.exports = Route

@@ -14,6 +14,13 @@ class RoutingTable {
     routes.set(nextHop, metric)
   }
 
+  removeRoute (destination, nextHop) {
+    const routes = this.destinations.get(destination)
+    if (!routes) return
+    routes.delete(nextHop)
+    if (routes.size === 0) this.destinations.delete(destination)
+  }
+
   findBestHopForSourceAmount (destination, sourceAmount) {
     const routes = this.destinations.get(destination)
     if (!routes) return undefined
