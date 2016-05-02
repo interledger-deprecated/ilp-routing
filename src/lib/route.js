@@ -3,8 +3,9 @@
 const simplify = require('code42day-vis-why')
 
 class Route {
-  constructor (points) {
+  constructor (points, info) {
     this.setPoints(points)
+    this.info = info || {}
   }
 
   setPoints (points) {
@@ -53,7 +54,7 @@ class Route {
    * Uses the Visvalingam-Whyatt line simplification algorithm.
    */
   simplify (maxPoints) {
-    return new Route(simplify(this.points, maxPoints))
+    return new Route(simplify(this.points, maxPoints), Object.assign({}, this.info))
   }
 
   combine (route) {

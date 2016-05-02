@@ -80,9 +80,9 @@ table.addRoute('jpy', 'gatehub', route.usdXrpGatehub.join(route.xrpJpyTokyoJpy))
 table.addRoute('jpy', 'bitstamp', route.usdXrpBitstamp.join(route.xrpJpyTokyoJpy))
 
 console.log(table.findBestHopForSourceAmount('jpy', 210))
-// prints { bestHop: 'gatehub', bestValue: 24205.50993427375 }
+// prints { bestHop: 'gatehub', bestValue: 24205.50993427375, info: {} }
 console.log(table.findBestHopForDestinationAmount('jpy', 24158))
-// prints { bestHop: 'gatehub', bestCost: 209.586929865 }
+// prints { bestHop: 'gatehub', bestCost: 209.586929865, info: {} }
 ```
 
 ``` js
