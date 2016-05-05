@@ -33,7 +33,7 @@ const route1 = new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json'
 const route2 = new r.Route(require('../test/fixtures/route-usd-xrp-bitstamp.json'))
 const route = route1.combine(route2).simplify(3)
 console.log(route.getPoints())
-// prints [[0,0],[4584.292323,612465],[14654.350698,1883992]]
+// prints [[0,0],[8034.771375,1068903],[14654.350698,1883992]]
 ```
 
 ``` js
@@ -42,12 +42,24 @@ const route1 = new r.Route([ [0, 0], [50, 60] ])
 const route2 = new r.Route([ [0, 0], [100, 100] ])
 const route = route1.combine(route2)
 
+console.log(route.getPoints())
+// prints [[0,0],[50,60],[60,60],[100,100]]
 console.log(route.amountAt(50))
 // prints 60
 console.log(route.amountAt(60))
 // prints 60
 console.log(route.amountAt(70))
 // prints 70
+```
+
+``` js
+const r = require('five-bells-routing')
+const route1 = new r.Route([ [0, 0], [50, 60] ])
+const route2 = new r.Route([])
+const route = route1.combine(route2)
+
+console.log(route.getPoints())
+// prints [[0,0],[50,60]]
 ```
 
 ### Join two routes
