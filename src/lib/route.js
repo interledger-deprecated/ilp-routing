@@ -17,9 +17,8 @@ class Route {
   }
 
   amountAt (x) {
-    if (this.points[0][0] >= x) {
-      return 0
-    }
+    if (x < this.points[0][0]) return 0
+    if (x === this.points[0][0]) return this.points[0][1]
     if (this.points[this.points.length - 1][0] <= x) {
       return this.points[this.points.length - 1][1]
     }
@@ -63,7 +62,7 @@ class Route {
         .concat(route._mapToMax(this.points))
         .concat(this._crossovers(route))
         .sort(comparePoints)
-        .filter(filterDedupPoints))
+        .filter(omitDuplicates))
   }
 
   /**
@@ -86,7 +85,7 @@ class Route {
   }
 
   /**
-   * A._crossovers(B) to find [●]
+   * A._crossovers(B) to find [AB, ●]
    *
    * │              B
    * │    A a a a●a a
@@ -136,22 +135,24 @@ class Route {
         .map((p) => [ p[0], route.amountAt(p[1]) ])
       .concat(route.points
         .map((p) => [ this.amountReverse(p[0]), p[1] ])
-      ).sort(comparePoints))
+      ).sort(comparePoints)
+      .filter(omitInfinity)
+      .filter(omitDuplicates))
   }
 }
 
 function comparePoints (a, b) { return a[0] - b[0] }
 
-function filterDedupPoints (point, i, points) {
-  if (i === 0) return true
-  const prev = points[i - 1]
-  return point[0] !== prev[0] || point[1] !== prev[1]
+function omitInfinity (point) { return point[0] !== Infinity }
+
+function omitDuplicates (point, i, points) {
+  return i === 0 || (point[0] !== points[i - 1][0])
 }
 
 /**
- *        y₁ - y₀     x₁y₀ - x₀y₁
- * y = x ───────── + ─────────────
- *        x₁ - x₀       x₁ - x₀
+ *      y₁ - y₀       x₁y₀ - x₀y₁
+ * y = ───────── x + ───────────── = mx + b
+ *      x₁ - x₀         x₁ - x₀
  */
 function toLine (pA, pB) {
   const x0 = pA[0]; const x1 = pB[0]

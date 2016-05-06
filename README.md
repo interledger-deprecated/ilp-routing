@@ -36,32 +36,6 @@ console.log(route.getPoints())
 // prints [[0,0],[8034.771375,1068903],[14654.350698,1883992]]
 ```
 
-``` js
-const r = require('five-bells-routing')
-const route1 = new r.Route([ [0, 0], [50, 60] ])
-const route2 = new r.Route([ [0, 0], [100, 100] ])
-const route = route1.combine(route2)
-
-console.log(route.getPoints())
-// prints [[0,0],[50,60],[60,60],[100,100]]
-console.log(route.amountAt(50))
-// prints 60
-console.log(route.amountAt(60))
-// prints 60
-console.log(route.amountAt(70))
-// prints 70
-```
-
-``` js
-const r = require('five-bells-routing')
-const route1 = new r.Route([ [0, 0], [50, 60] ])
-const route2 = new r.Route([])
-const route = route1.combine(route2)
-
-console.log(route.getPoints())
-// prints [[0,0],[50,60]]
-```
-
 ### Join two routes
 
 ``` js
@@ -71,8 +45,10 @@ const route1 = new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json'
 const route2 = new r.Route(require('../test/fixtures/route-xrp-jpy-tokyojpy.json'))
 const route = route1.join(route2).simplify(3)
 console.log(route.getPoints())
-// prints [[0,0],[2736.957536,309417.18604060914],[Infinity,3942622.7]]
+// prints [[0,0],[2736.957536,309417.18604060914],[7236.133411,757237.079362416]]
 ```
+
+
 
 ### Create a Routing Table
 
@@ -95,12 +71,4 @@ console.log(table.findBestHopForSourceAmount('jpy', 210))
 // prints { bestHop: 'gatehub', bestValue: 24205.50993427375, info: {} }
 console.log(table.findBestHopForDestinationAmount('jpy', 24158))
 // prints { bestHop: 'gatehub', bestCost: 209.586929865, info: {} }
-```
-
-``` js
-const r = require('five-bells-routing')
-const route1 = new r.Route([ [0, 0], [200, 100] ])
-const route2 = new r.Route([ [0, 0], [50, 60] ])
-route1.join(route2).amountAt(100)
-// prints 60
 ```
