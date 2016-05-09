@@ -133,11 +133,13 @@ class Route {
     return new Route(
       this.points
         .map((p) => [ p[0], route.amountAt(p[1]) ])
-      .concat(route.points
-        .map((p) => [ this.amountReverse(p[0]), p[1] ])
-      ).sort(comparePoints)
-      .filter(omitInfinity)
-      .filter(omitDuplicates))
+        .concat(route.points
+          .map((p) => [ this.amountReverse(p[0]), p[1] ])
+        )
+        .sort(comparePoints)
+        .filter(omitInfinity)
+        .filter(omitDuplicates)
+    )
   }
 }
 
