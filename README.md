@@ -64,11 +64,12 @@ const route = {
 const table = new r.RoutingTable()
 table.addRoute('xrp', 'gatehub', route.usdXrpGatehub)
 table.addRoute('xrp', 'bitstamp', route.usdXrpBitstamp)
-table.addRoute('jpy', 'gatehub', route.usdXrpGatehub.join(route.xrpJpyTokyoJpy))
+const jpyGatehub = route.usdXrpGatehub.join(route.xrpJpyTokyoJpy)
+table.addRoute('jpy', 'gatehub', jpyGatehub)
 table.addRoute('jpy', 'bitstamp', route.usdXrpBitstamp.join(route.xrpJpyTokyoJpy))
 
 console.log(table.findBestHopForSourceAmount('jpy', 210))
-// prints { bestHop: 'gatehub', bestValue: 24205.50993427375, info: {} }
+// prints { bestHop: 'gatehub', bestValue: 24205.50993427375, bestRoute: jpyGatehub }
 console.log(table.findBestHopForDestinationAmount('jpy', 24158))
-// prints { bestHop: 'gatehub', bestCost: 209.586929865, info: {} }
+// prints { bestHop: 'gatehub', bestCost: 209.586929865, bestRoute: jpyGatehub }
 ```

@@ -4,6 +4,14 @@ const assert = require('assert')
 const Route = require('../src/lib/route')
 
 describe('Route', function () {
+  describe('constructor', function () {
+    it('saves the points', function () {
+      const points = []
+      const route = new Route(points)
+      assert.equal(route.points, points)
+    })
+  })
+
   describe('setPoints', function () {
     it('sets the route\'s points', function () {
       const route = new Route([])

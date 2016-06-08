@@ -27,17 +27,17 @@ class RoutingTable {
 
     let bestHop = null
     let bestValue = -1
-    let routeInfo = null
+    let bestRoute = null
     routes.forEach((route, nextHop) => {
       const value = route.amountAt(sourceAmount)
       if (value > bestValue) {
         bestHop = nextHop
         bestValue = value
-        routeInfo = route.info
+        bestRoute = route
       }
     })
 
-    return { bestHop, bestValue, info: routeInfo }
+    return { bestHop, bestValue, bestRoute }
   }
 
   findBestHopForDestinationAmount (destination, destinationAmount) {
@@ -46,18 +46,18 @@ class RoutingTable {
 
     let bestHop = null
     let bestCost = Infinity
-    let routeInfo = null
+    let bestRoute = null
     routes.forEach((route, nextHop) => {
       const cost = route.amountReverse(destinationAmount)
       if (cost < bestCost) {
         bestHop = nextHop
         bestCost = cost
-        routeInfo = route.info
+        bestRoute = route
       }
     })
 
     if (!bestHop) return undefined
-    return { bestHop, bestCost, info: routeInfo }
+    return { bestHop, bestCost, bestRoute }
   }
 }
 

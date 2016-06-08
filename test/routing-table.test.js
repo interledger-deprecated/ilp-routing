@@ -35,14 +35,16 @@ describe('RoutingTable', function () {
   describe('findBestHopForSourceAmount', function () {
     it('returns the best hop', function () {
       const table = new RoutingTable()
-      table.addRoute(ledgerA, mark, new Route([[0, 0], [100, 100]], {one: 1}))
-      table.addRoute(ledgerA, mary, new Route([[0, 0], [50, 60]], {two: 2}))
+      const routeMark = new Route([[0, 0], [100, 100]])
+      const routeMary = new Route([[0, 0], [50, 60]])
+      table.addRoute(ledgerA, mark, routeMark)
+      table.addRoute(ledgerA, mary, routeMary)
       assert.deepEqual(table.findBestHopForSourceAmount(ledgerA, 50),
-        { bestHop: mary, bestValue: 60, info: {two: 2} })
+        { bestHop: mary, bestValue: 60, bestRoute: routeMary })
       assert.deepEqual(table.findBestHopForSourceAmount(ledgerA, 70),
-        { bestHop: mark, bestValue: 70, info: {one: 1} })
+        { bestHop: mark, bestValue: 70, bestRoute: routeMark })
       assert.deepEqual(table.findBestHopForSourceAmount(ledgerA, 200),
-        { bestHop: mark, bestValue: 100, info: {one: 1} })
+        { bestHop: mark, bestValue: 100, bestRoute: routeMark })
     })
 
     it('returns undefined when there is no route to the destination', function () {
@@ -54,12 +56,14 @@ describe('RoutingTable', function () {
   describe('findBestHopForDestinationAmount', function () {
     it('returns the best hop', function () {
       const table = new RoutingTable()
-      table.addRoute(ledgerA, mark, new Route([[0, 0], [100, 100]], {one: 1}))
-      table.addRoute(ledgerA, mary, new Route([[0, 0], [50, 60]], {two: 2}))
+      const routeMark = new Route([[0, 0], [100, 100]], {one: 1})
+      const routeMary = new Route([[0, 0], [50, 60]], {two: 2})
+      table.addRoute(ledgerA, mark, routeMark)
+      table.addRoute(ledgerA, mary, routeMary)
       assert.deepEqual(table.findBestHopForDestinationAmount(ledgerA, 60),
-        { bestHop: mary, bestCost: 50, info: {two: 2} })
+        { bestHop: mary, bestCost: 50, bestRoute: routeMary })
       assert.deepEqual(table.findBestHopForDestinationAmount(ledgerA, 70),
-        { bestHop: mark, bestCost: 70, info: {one: 1} })
+        { bestHop: mark, bestCost: 70, bestRoute: routeMark })
     })
 
     it('returns undefined when there is no route to the destination', function () {
