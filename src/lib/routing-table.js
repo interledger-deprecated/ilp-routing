@@ -5,13 +5,13 @@ class RoutingTable {
     this.destinations = new Map()
   }
 
-  addRoute (destination, nextHop, metric) {
+  addRoute (destination, nextHop, route) {
     let routes = this.destinations.get(destination)
     if (!routes) {
       routes = new Map()
       this.destinations.set(destination, routes)
     }
-    routes.set(nextHop, metric)
+    routes.set(nextHop, route)
   }
 
   removeRoute (destination, nextHop) {

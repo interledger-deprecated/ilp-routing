@@ -1,9 +1,9 @@
 'use strict'
 
 const Route = require('./src/lib/route')
-const RoutingTable = require('./src/lib/routing-table')
+const RoutingTables = require('./src/lib/routing-tables')
 
 module.exports = {
   Route,
-  RoutingTable
+  RoutingTables
 }

@@ -2,74 +2,55 @@
 
 > ILP routing table implementation
 
-## Usage
+## API Reference
 
-### Create a Route
+### Route
 
-``` js
-const r = require('five-bells-routing')
+`RouteData` refers to the [Routes schema](https://github.com/interledger/five-bells-shared/blob/master/schemas/Routes.json) in five-bells-shared.
 
-const route = new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json'))
-```
+#### `new Route(curve, hops, info)`
+#### `Route.fromData(routeData) ⇒ Route`
+#### `route.amountAt(x) ⇒ Number`
 
-### Simplify a Route
+Given a source amount, look up the corresponding destination amount.
 
-``` js
-const r = require('five-bells-routing')
+#### `route.amountReverse(y) ⇒ Number`
 
-const route = new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json'))
-const simplified = route.simplify(3)
+Given a destination amount, look up the corresponding source amount.
 
-console.log(simplified.getPoints())
-// prints [[0,0],[1999.59119,267657],[7236.133411,896480]]
-```
+#### `route.getPoints(y) ⇒ Point[]`
 
-### Combine two routes
+#### `route.combine(alternateRoute) ⇒ Route`
 
-``` js
-const r = require('five-bells-routing')
+Combine two parallel routes.
 
-const route1 = new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json'))
-const route2 = new r.Route(require('../test/fixtures/route-usd-xrp-bitstamp.json'))
-const route = route1.combine(route2).simplify(3)
-console.log(route.getPoints())
-// prints [[0,0],[8034.771375,1068903],[14654.350698,1883992]]
-```
+#### `route.join(tailRoute) ⇒ Route`
 
-### Join two routes
+Join two routes end-to-end.
 
-``` js
-const r = require('five-bells-routing')
+#### `route.shiftY(dy) ⇒ Route`
 
-const route1 = new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json'))
-const route2 = new r.Route(require('../test/fixtures/route-xrp-jpy-tokyojpy.json'))
-const route = route1.join(route2).simplify(3)
-console.log(route.getPoints())
-// prints [[0,0],[2736.957536,309417.18604060914],[7236.133411,757237.079362416]]
-```
+Shift a route's curve up or down.
 
+#### `route.simplify(maxPoints) ⇒ Route`
 
+Simplify a route.
 
-### Create a Routing Table
+#### `route.isExpired() ⇒ Boolean`
 
-``` js
-const r = require('five-bells-routing')
+Check if a route has expired.
 
-const route = {
-  usdXrpGatehub: new r.Route(require('../test/fixtures/route-usd-xrp-gatehub.json')),
-  usdXrpBitstamp: new r.Route(require('../test/fixtures/route-usd-xrp-bitstamp.json')),
-  xrpJpyTokyoJpy: new r.Route(require('../test/fixtures/route-xrp-jpy-tokyojpy.json'))
-}
+#### `route.toJSON() ⇒ RouteData`
 
-const table = new r.RoutingTable()
-table.addRoute('xrp', 'gatehub', route.usdXrpGatehub)
-table.addRoute('xrp', 'bitstamp', route.usdXrpBitstamp)
-const jpyGatehub = route.usdXrpGatehub.join(route.xrpJpyTokyoJpy)
-table.addRoute('jpy', 'gatehub', jpyGatehub)
-table.addRoute('jpy', 'bitstamp', route.usdXrpBitstamp.join(route.xrpJpyTokyoJpy))
+### RoutingTables
 
-console.log(table.findBestHopForSourceAmount('jpy', 210))
-// prints { bestHop: 'gatehub', bestValue: 24205.50993427375, bestRoute: jpyGatehub }
-console.log(table.findBestHopForDestinationAmount('jpy', 24158))
-// prints { bestHop: 'gatehub', bestCost: 209.586929865, bestRoute: jpyGatehub }
-```
+#### `new RoutingTables(baseURI, localRoutes, expiryDuration)`
+#### `tables.addLocalRoutes(localRouteObjects)`
+#### `tables.addRoute(routeObject) ⇒ Boolean`
+
+Returns whether or not a new route was created (updates don't count).
+
+#### `tables.removeExpiredRoutes()`
+#### `tables.toJSON(maxPoints) ⇒ RouteData[]`
+#### `tables.findBestHopForDestinationAmount(ledgerA, ledgerC, finalAmount) ⇒ Hop`
+#### `tables.findBestHopForSourceAmount(ledgerA, ledgerC, sourceAmount) ⇒ Hop`
