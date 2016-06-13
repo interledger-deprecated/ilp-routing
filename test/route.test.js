@@ -1,129 +1,130 @@
 'use strict'
 
 const assert = require('assert')
+const sinon = require('sinon')
 const Route = require('../src/lib/route')
+const LiquidityCurve = require('../src/lib/liquidity-curve')
+
+const START_DATE = 1434412800000 // June 16, 2015 00:00:00 GMT
+const ledgerA = 'http://ledgerA.example'
+const ledgerB = 'http://ledgerB.example'
+const ledgerC = 'http://ledgerC.example'
+const ledgerD = 'http://ledgerD.example'
+const hopsABC = [ledgerA, ledgerB, ledgerC]
+const hopsADC = [ledgerA, ledgerD, ledgerC]
+const hopsBCD = [ledgerB, ledgerC, ledgerD]
+
+const mark = 'http://mark.example'
+const mary = 'http://mary.example'
+const markA = ledgerA + '/accounts/mark'
+const markC = ledgerC + '/accounts/mark'
 
 describe('Route', function () {
-  describe('setPoints', function () {
-    it('sets the route\'s points', function () {
-      const route = new Route([])
-      const points = []
-      route.setPoints(points)
-      assert.equal(route.points, points)
-    })
+  beforeEach(function () {
+    this.clock = sinon.useFakeTimers(START_DATE)
   })
 
-  describe('getPoints', function () {
-    it('returns the route\'s points', function () {
-      const points = []
-      const route = new Route(points)
-      assert.equal(route.getPoints(), points)
-    })
-  })
+  describe('constructor', function () {
+    it('sets up a curve and the hops', function () {
+      const route = new Route([[0, 0], [100, 200]], hopsABC, {
+        minMessageWindow: 3,
+        expiresAt: 1234,
+        connector: mark,
+        sourceAccount: markA,
+        destinationAccount: markC
+      })
 
-  describe('amountAt', function () {
-    const route = new Route([[10, 20], [100, 200]])
+      assert.ok(route.curve instanceof LiquidityCurve)
+      assert.deepEqual(route.hops, hopsABC)
+      assert.equal(route.sourceLedger, ledgerA)
+      assert.equal(route.nextLedger, ledgerB)
+      assert.equal(route.destinationLedger, ledgerC)
 
-    it('returns 0 if "x" is too low', function () {
-      assert.equal(route.amountAt(0), 0)
-      assert.equal(route.amountAt(-10), 0)
-    })
-
-    it('returns the maximum if "x" is too high', function () {
-      assert.equal(route.amountAt(101), 200)
-      assert.equal(route.amountAt(1000), 200)
-    })
-
-    it('returns the linear interpolation of intermediate "x" values', function () {
-      assert.equal(route.amountAt(10), 20)
-      assert.equal(route.amountAt(11), 22)
-      assert.equal(route.amountAt(55), 110)
-      assert.equal(route.amountAt(100), 200)
-    })
-
-    it('returns an exact "y" value when possible', function () {
-      const route2 = new Route([[0, 0], [50, 100], [100, 1000]])
-      assert.equal(route2.amountAt(50), 100)
-    })
-  })
-
-  describe('amountReverse', function () {
-    const route = new Route([[10, 20], [100, 200]])
-
-    it('returns the minimum "x" if "y" is too low', function () {
-      assert.equal(route.amountReverse(0), 10)
-      assert.equal(route.amountReverse(-10), 10)
-    })
-
-    it('returns Infinity if "y" is too high', function () {
-      assert.equal(route.amountReverse(201), Infinity)
-      assert.equal(route.amountReverse(1000), Infinity)
-    })
-
-    it('returns the linear interpolation of intermediate "y" values', function () {
-      assert.equal(route.amountReverse(20), 10)
-      assert.equal(route.amountReverse(22), 11)
-      assert.equal(route.amountReverse(110), 55)
-      assert.equal(route.amountReverse(200), 100)
+      assert.equal(route.minMessageWindow, 3)
+      assert.equal(route.expiresAt, 1234)
+      assert.equal(route.connector, mark)
+      assert.equal(route.sourceAccount, markA)
+      assert.equal(route.destinationAccount, markC)
     })
   })
 
   describe('combine', function () {
-    it('finds an intersection between a slope and a flat line', function () {
-      const route1 = new Route([ [0, 0], [50, 60] ])
-      const route2 = new Route([ [0, 0], [100, 100] ])
-      const route = route1.combine(route2)
+    const route1 = new Route([[0, 0], [100, 100]], hopsABC, { minMessageWindow: 1 })
+    const route2 = new Route([[0, 0], [50, 60]], hopsADC, { minMessageWindow: 2 })
+    const combinedRoute = route1.combine(route2)
 
-      assert.deepStrictEqual(route.getPoints(),
-        [ [0, 0], [50, 60], [60, 60], [100, 100] ])
-      assert.equal(route.amountAt(25), 30)
-      assert.equal(route.amountAt(50), 60)
-      assert.equal(route.amountAt(60), 60)
-      assert.equal(route.amountAt(70), 70)
-    })
-
-    it('ignores an empty curve', function () {
-      const route1 = new Route([ [0, 0], [50, 60] ])
-      const route2 = new Route([])
-      assert.deepEqual(route1.combine(route2).getPoints(), [[0, 0], [50, 60]])
-      assert.deepEqual(route2.combine(route1).getPoints(), [[0, 0], [50, 60]])
-    })
-
-    it('ignores duplicate points', function () {
-      const route1 = new Route([ [0, 0], [50, 60], [50, 60] ])
-      const route2 = new Route([ [0, 0], [0, 0], [100, 100] ])
-      assert.deepEqual(route1.combine(route2).getPoints(),
+    it('combines the curves', function () {
+      assert.deepEqual(combinedRoute.getPoints(),
         [ [0, 0], [50, 60], [60, 60], [100, 100] ])
     })
 
-    it('finds an intersection between two slopes', function () {
-      const route1 = new Route([ [0, 0], [100, 1000] ])
-      const route2 = new Route([ [0, 0], [100 / 3, 450], [200 / 3, 550] ])
-      const result = [ [0, 0], [100 / 3, 450], [50, 500], [200 / 3, 666.6666666666667], [100, 1000] ]
-      assert.deepEqual(route1.combine(route2).getPoints(), result)
-      assert.deepEqual(route2.combine(route1).getPoints(), result)
+    it('only uses the boundary ledgers in "hops"', function () {
+      assert.deepEqual(combinedRoute.hops, [ledgerA, ledgerC])
+    })
+
+    it('picks the larger minMessageWindow', function () {
+      assert.equal(combinedRoute.minMessageWindow, 2)
     })
   })
 
   describe('join', function () {
-    it('composes two routes', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ])
-      const route2 = new Route([ [0, 0], [50, 60] ])
-      const route = route1.join(route2)
+    it('succeeds if the routes are adjacent', function () {
+      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {
+        connector: mark,
+        minMessageWindow: 1
+      })
+      const route2 = new Route([ [0, 0], [50, 60] ], hopsBCD, {
+        connector: mary,
+        minMessageWindow: 2
+      })
+      const joinedRoute = route1.join(route2, 1000)
 
-      assert.deepStrictEqual(route.points,
+      // It joins the curves
+      assert.deepEqual(joinedRoute.getPoints(),
         [ [0, 0], [100, 60], [200, 60] ])
-      assert.equal(route.amountAt(50), 30)
-      assert.equal(route.amountAt(100), 60)
-      assert.equal(route.amountAt(200), 60)
+      // It concatenates the hops
+      assert.deepEqual(joinedRoute.hops, [ledgerA, ledgerB, ledgerC, ledgerD])
+      // It uses the head route's connector
+      assert.equal(joinedRoute.connector, mark)
+      // It combines the minMessageWindows
+      assert.equal(joinedRoute.minMessageWindow, 3)
+      // It sets an expiry in the future
+      assert.ok(Date.now() < joinedRoute.expiresAt)
     })
 
-    it('truncates the domain as necessary', function () {
-      const route1 = new Route([ [0, 0], [50, 100] ])
-      const route2 = new Route([ [0, 0], [200, 300] ])
-      const route = route1.join(route2)
-      assert.deepEqual(route.points,
-        [ [0, 0], [50, 150] ])
+    it('fails if the routes aren\'t adjacent', function () {
+      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {})
+      const route2 = new Route([ [0, 0], [50, 60] ], [ledgerC, ledgerD], {})
+      assert.strictEqual(route1.join(route2, 0), undefined)
+    })
+
+    it('fails if the joined route would double back', function () {
+      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerB, ledgerA], {})
+      const route2 = new Route([ [0, 0], [50, 60] ], hopsABC, {})
+      assert.strictEqual(route1.join(route2, 0), undefined)
+    })
+  })
+
+  describe('shiftY', function () {
+    it('creates a shifted route', function () {
+      const route1 = new Route([ [0, 0], [50, 60], [100, 100] ], [ledgerA, ledgerB], {connector: mark})
+      const route2 = route1.shiftY(1)
+      assert.equal(route2.connector, mark)
+      assert.deepEqual(route2.curve.points,
+        [ [0, 1], [50, 61], [100, 101] ])
+    })
+  })
+
+  describe('isExpired', function () {
+    it('doesn\'t expire routes by default', function () {
+      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {})
+      const route2 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {expiresAt: Date.now() + 1000})
+      assert.strictEqual(route1.isExpired(), false)
+      assert.strictEqual(route2.isExpired(), false)
+
+      this.clock.tick(2000)
+      assert.strictEqual(route1.isExpired(), false)
+      assert.strictEqual(route2.isExpired(), true)
     })
   })
 })
