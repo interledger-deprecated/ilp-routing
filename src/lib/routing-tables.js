@@ -176,7 +176,8 @@ class RoutingTables {
       destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, ledgerB),
       finalLedger: ledgerC,
       finalAmount: finalAmount,
-      minMessageWindow: nextHop.bestRoute.minMessageWindow
+      minMessageWindow: nextHop.bestRoute.minMessageWindow,
+      additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     }
   }
 
@@ -202,7 +203,8 @@ class RoutingTables {
       destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, ledgerB),
       finalLedger: ledgerC,
       finalAmount: nextHop.bestValue.toString(),
-      minMessageWindow: nextHop.bestRoute.minMessageWindow
+      minMessageWindow: nextHop.bestRoute.minMessageWindow,
+      additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     }
   }
 

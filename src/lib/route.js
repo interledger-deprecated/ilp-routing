@@ -12,6 +12,7 @@ class Route {
    * @param {String} info.connector
    * @param {String} info.sourceAccount
    * @param {String} info.destinationAccount
+   * @param {Object} info.additionalInfo
    */
   constructor (curve, hops, info) {
     this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
@@ -22,6 +23,7 @@ class Route {
 
     this.minMessageWindow = info.minMessageWindow
     this.expiresAt = info.expiresAt
+    this.additionalInfo = info.additionalInfo
 
     this.connector = info.connector
     this.sourceAccount = info.sourceAccount
@@ -82,7 +84,8 @@ class Route {
    */
   simplify (maxPoints) {
     return new Route(this.curve.simplify(maxPoints), this._simpleHops(), {
-      minMessageWindow: this.minMessageWindow
+      minMessageWindow: this.minMessageWindow,
+      additionalInfo: this.additionalInfo
     })
   }
 
@@ -127,7 +130,8 @@ function dataToRoute (data) {
     minMessageWindow: data.min_message_window,
     connector: data.connector,
     sourceAccount: data.source_account,
-    destinationAccount: data.destination_account
+    destinationAccount: data.destination_account,
+    additionalInfo: data.additional_info
   })
 }
 
