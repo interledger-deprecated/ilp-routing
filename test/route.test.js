@@ -31,7 +31,8 @@ describe('Route', function () {
         expiresAt: 1234,
         connector: mark,
         sourceAccount: markA,
-        destinationAccount: markC
+        destinationAccount: markC,
+        additionalInfo: {foo: 'bar'}
       })
 
       assert.ok(route.curve instanceof LiquidityCurve)
@@ -45,6 +46,28 @@ describe('Route', function () {
       assert.equal(route.connector, mark)
       assert.equal(route.sourceAccount, markA)
       assert.equal(route.destinationAccount, markC)
+      assert.deepStrictEqual(route.additionalInfo, {foo: 'bar'})
+    })
+  })
+
+  describe('LiquidityCurve methods', function () {
+    const route = new Route([[10, 20], [100, 200]], hopsABC, {})
+    describe('amountAt', function () {
+      it('finds the corresponding amount', function () {
+        assert.equal(route.amountAt(55), 110)
+      })
+    })
+
+    describe('amountReverse', function () {
+      it('finds the corresponding amount', function () {
+        assert.equal(route.amountReverse(110), 55)
+      })
+    })
+
+    describe('getPoints', function () {
+      it('finds the corresponding amount', function () {
+        assert.deepStrictEqual(route.getPoints(), [[10, 20], [100, 200]])
+      })
     })
   })
 
