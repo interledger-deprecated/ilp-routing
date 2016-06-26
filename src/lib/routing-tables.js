@@ -1,5 +1,7 @@
 'use strict'
 
+const debug = require('debug')('five-bells-routing:routing-tables')
+
 const Route = require('./route')
 const RoutingTable = require('./routing-table')
 // A next hop of PAIR distinguishes a local pair A→B from a complex route
@@ -209,13 +211,23 @@ class RoutingTables {
   }
 
   _findBestHopForSourceAmount (source, destination, amount) {
-    if (!this.sources[source]) return
+    debug('searching best hop from %s to %s for %s (by src amount)', source, destination, amount)
+    if (!this.sources[source]) {
+      debug('source %s is not in known sources: %s',
+        source, Object.keys(this.sources))
+      return undefined
+    }
     return this._rewriteLocalHop(
       this.sources[source].findBestHopForSourceAmount(destination, amount))
   }
 
   _findBestHopForDestinationAmount (source, destination, amount) {
-    if (!this.sources[source]) return
+    debug('searching best hop from %s to %s for %s (by dst amount)', source, destination, amount)
+    if (!this.sources[source]) {
+      debug('source %s is not in known sources: %s',
+        source, Object.keys(this.sources))
+      return undefined
+    }
     return this._rewriteLocalHop(
       this.sources[source].findBestHopForDestinationAmount(destination, amount))
   }
