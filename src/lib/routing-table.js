@@ -1,5 +1,7 @@
 'use strict'
 
+const debug = require('debug')('five-bells-routing:routing-table')
+
 class RoutingTable {
   constructor () {
     this.destinations = new Map()
@@ -23,7 +25,11 @@ class RoutingTable {
 
   findBestHopForSourceAmount (destination, sourceAmount) {
     const routes = this.destinations.get(destination)
-    if (!routes) return undefined
+    if (!routes) {
+      debug('destination %s is not in known destinations: %s',
+        destination, Array.from(this.destinations.keys()))
+      return undefined
+    }
 
     let bestHop = null
     let bestValue = -1
@@ -42,7 +48,11 @@ class RoutingTable {
 
   findBestHopForDestinationAmount (destination, destinationAmount) {
     const routes = this.destinations.get(destination)
-    if (!routes) return undefined
+    if (!routes) {
+      debug('destination %s is not in known destinations: %s',
+        destination, Array.from(this.destinations.keys()))
+      return undefined
+    }
 
     let bestHop = null
     let bestCost = Infinity
