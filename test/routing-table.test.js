@@ -6,7 +6,7 @@ const RoutingTable = require('../src/lib/routing-table')
 // RoutingTable only requires amountAt and amountReverse.
 const Curve = require('../src/lib/liquidity-curve')
 
-const ledgerB = 'http://ledgerB.example'
+const ledgerB = 'ledgerB.'
 const mark = 'http://mark.example'
 const mary = 'http://mary.example'
 

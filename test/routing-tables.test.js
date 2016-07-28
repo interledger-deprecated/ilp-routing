@@ -5,11 +5,11 @@ const RoutingTables = require('../src/lib/routing-tables')
 const sinon = require('sinon')
 
 const START_DATE = 1434412800000 // June 16, 2015 00:00:00 GMT
-const ledgerA = 'http://ledgerA.example'
-const ledgerB = 'http://ledgerB.example'
-const ledgerC = 'http://ledgerC.example'
-const ledgerD = 'http://ledgerD.example'
-const ledgerE = 'http://ledgerE.example'
+const ledgerA = 'ledgerA.'
+const ledgerB = 'ledgerB.'
+const ledgerC = 'ledgerC.'
+const ledgerD = 'ledgerD.'
+const ledgerE = 'ledgerE.'
 
 // connector users
 const markA = 'http://ledgerA.example/accounts/mark'

@@ -6,10 +6,10 @@ const Route = require('../src/lib/route')
 const LiquidityCurve = require('../src/lib/liquidity-curve')
 
 const START_DATE = 1434412800000 // June 16, 2015 00:00:00 GMT
-const ledgerA = 'http://ledgerA.example'
-const ledgerB = 'http://ledgerB.example'
-const ledgerC = 'http://ledgerC.example'
-const ledgerD = 'http://ledgerD.example'
+const ledgerA = 'ledgerA.'
+const ledgerB = 'ledgerB.'
+const ledgerC = 'ledgerC.'
+const ledgerD = 'ledgerD.'
 const hopsABC = [ledgerA, ledgerB, ledgerC]
 const hopsADC = [ledgerA, ledgerD, ledgerC]
 const hopsBCD = [ledgerB, ledgerC, ledgerD]
