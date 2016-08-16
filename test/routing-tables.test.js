@@ -96,8 +96,8 @@ describe('RoutingTables', function () {
   describe('addRoute', function () {
     it('doesn\'t create a route from A→B→A', function () {
       assert.strictEqual(
-        this.tables.sources[ledgerA].destinations.get(ledgerA),
-        undefined)
+        this.tables.sources.get(ledgerA).destinations.get(ledgerA),
+        null)
     })
 
     it('doesn\'t create a route from A→C→B if A→C isnt local', function () {
@@ -118,7 +118,7 @@ describe('RoutingTables', function () {
         points: [ [0, 0], [200, 100] ]
       }), false)
       assert.strictEqual(
-        this.tables.sources[ledgerA].destinations.get(ledgerB).get('http://mary.example'),
+        this.tables.sources.get(ledgerA).destinations.get(ledgerB).get('http://mary.example'),
         undefined)
     })
 
@@ -132,7 +132,7 @@ describe('RoutingTables', function () {
       }), false)
       // Dont create a second A→B
       assert.strictEqual(
-        this.tables.sources[ledgerA].destinations.get(ledgerB).get('http://mary.example'),
+        this.tables.sources.get(ledgerA).destinations.get(ledgerB).get('http://mary.example'),
         undefined)
     })
 
@@ -389,7 +389,7 @@ describe('RoutingTables', function () {
 
     it('finds the best route when there is one hop', function () {
       assert.deepStrictEqual(
-        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerB, '50'),
+        this.tables.findBestHopForDestinationAmount(ledgerA + 'alice', ledgerB + 'bob', '50'),
         {
           isFinal: true,
           connector: 'http://mark.example',
@@ -402,6 +402,32 @@ describe('RoutingTables', function () {
           finalAmount: '50',
           minMessageWindow: 1,
           additionalInfo: {rate_info: '0.5'}
+        })
+    })
+
+    it('finds the best route when there is a remote path', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        connector: 'http://mary.example',
+        min_message_window: 1,
+        source_account: ledgerB + '/accounts/mary',
+        points: [ [0, 0], [200, 100] ]
+      })
+      assert.deepEqual(
+        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerC + 'subledger1.bob', '25'),
+        {
+          isFinal: false,
+          connector: 'http://mary.example',
+          sourceLedger: ledgerA,
+          sourceAmount: (100).toString(),
+          destinationLedger: ledgerB,
+          destinationAmount: (50).toString(),
+          destinationCreditAccount: ledgerB + '/accounts/mary',
+          finalLedger: ledgerC,
+          finalAmount: '25',
+          minMessageWindow: 2,
+          additionalInfo: undefined
         })
     })
   })

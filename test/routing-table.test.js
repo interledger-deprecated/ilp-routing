@@ -25,7 +25,7 @@ describe('RoutingTable', function () {
       const table = new RoutingTable()
       table.addRoute(ledgerB, mark, new Curve([]))
       table.removeRoute(ledgerB, mark)
-      assert.equal(table.destinations.size, 0)
+      assert.equal(table.destinations.size(), 0)
     })
 
     it('ignores nonexistent routes', function () {

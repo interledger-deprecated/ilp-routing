@@ -1,17 +1,18 @@
 'use strict'
 
+const PrefixTree = require('./prefix-tree')
 const debug = require('debug')('five-bells-routing:routing-table')
 
 class RoutingTable {
   constructor () {
-    this.destinations = new Map()
+    this.destinations = new PrefixTree()
   }
 
   addRoute (destination, nextHop, route) {
     let routes = this.destinations.get(destination)
     if (!routes) {
       routes = new Map()
-      this.destinations.set(destination, routes)
+      this.destinations.insert(destination, routes)
     }
     routes.set(nextHop, route)
   }
@@ -24,10 +25,10 @@ class RoutingTable {
   }
 
   findBestHopForSourceAmount (destination, sourceAmount) {
-    const routes = this.destinations.get(destination)
+    const routes = this.destinations.resolve(destination)
     if (!routes) {
       debug('destination %s is not in known destinations: %s',
-        destination, Array.from(this.destinations.keys()))
+        destination, this.destinations.keys())
       return undefined
     }
 
@@ -47,10 +48,10 @@ class RoutingTable {
   }
 
   findBestHopForDestinationAmount (destination, destinationAmount) {
-    const routes = this.destinations.get(destination)
+    const routes = this.destinations.resolve(destination)
     if (!routes) {
       debug('destination %s is not in known destinations: %s',
-        destination, Array.from(this.destinations.keys()))
+        destination, this.destinations.keys())
       return undefined
     }
 
