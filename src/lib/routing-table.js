@@ -1,11 +1,11 @@
 'use strict'
 
-const PrefixTree = require('./prefix-tree')
+const PrefixMap = require('./prefix-map')
 const debug = require('debug')('five-bells-routing:routing-table')
 
 class RoutingTable {
   constructor () {
-    this.destinations = new PrefixTree()
+    this.destinations = new PrefixMap()
   }
 
   addRoute (destination, nextHop, route) {
