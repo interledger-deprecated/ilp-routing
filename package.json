@@ -1,6 +1,6 @@
 {
   "name": "five-bells-routing",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "description": "ILP routing layer utilities",
   "main": "index.js",
   "directories": {
