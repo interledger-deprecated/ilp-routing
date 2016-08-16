@@ -2,6 +2,7 @@
 
 const debug = require('debug')('five-bells-routing:routing-tables')
 
+const PrefixMap = require('./prefix-map')
 const Route = require('./route')
 const RoutingTable = require('./routing-table')
 // A next hop of PAIR distinguishes a local pair A→B from a complex route
@@ -17,7 +18,7 @@ class RoutingTables {
   constructor (baseURI, localRoutes, expiryDuration) {
     this.baseURI = baseURI
     this.expiryDuration = expiryDuration
-    this.sources = {} // { "sourceLedger" => RoutingTable }
+    this.sources = new PrefixMap() // { "sourceLedger" => RoutingTable }
     this.accounts = {} // { "connector;ledger" => accountURI }
     this.addLocalRoutes(localRoutes)
   }
@@ -29,8 +30,8 @@ class RoutingTables {
   addLocalRoutes (_localRoutes) {
     const localRoutes = _localRoutes.map(Route.fromData)
     for (const localRoute of localRoutes) {
-      const table = this.sources[localRoute.sourceLedger] ||
-        (this.sources[localRoute.sourceLedger] = new RoutingTable())
+      const table = this.sources.get(localRoute.sourceLedger) ||
+        this.sources.insert(localRoute.sourceLedger, new RoutingTable())
       table.addRoute(localRoute.destinationLedger, PAIR, localRoute)
     }
     localRoutes.forEach((route) => this.addRoute(route))
@@ -98,24 +99,19 @@ class RoutingTables {
   /**
    * @param {function(tableFromA, ledgerA)} fn
    */
-  eachSource (fn) {
-    for (const ledgerA in this.sources) {
-      fn(this.sources[ledgerA], ledgerA)
-    }
-  }
+  eachSource (fn) { this.sources.each(fn) }
 
   /**
    * @param {function(routeFromAToB, ledgerA, ledgerB, nextHop)} fn
    */
   eachRoute (fn) {
     this.eachSource((tableFromA, ledgerA) => {
-      for (const ledgerB of tableFromA.destinations.keys()) {
-        const routesFromAToB = tableFromA.destinations.get(ledgerB)
+      tableFromA.destinations.each((routesFromAToB, ledgerB) => {
         for (const nextHop of routesFromAToB.keys()) {
           const routeFromAToB = routesFromAToB.get(nextHop)
           fn(routeFromAToB, ledgerA, ledgerB, nextHop)
         }
-      }
+      })
     })
   }
 
@@ -126,14 +122,13 @@ class RoutingTables {
   toJSON (maxPoints) {
     const routes = []
     this.eachSource((table, sourceLedger) => {
-      for (const destinationLedger of table.destinations.keys()) {
-        const routesByConnector = table.destinations.get(destinationLedger)
+      table.destinations.each((routesByConnector, destinationLedger) => {
         const combinedRoute = combineRoutesByConnector(routesByConnector, maxPoints)
         const combinedRouteData = combinedRoute.toJSON()
         combinedRouteData.connector = this.baseURI
         combinedRouteData.source_account = this._getAccount(this.baseURI, sourceLedger)
         routes.push(combinedRouteData)
-      }
+      })
     })
     return routes
   }
@@ -147,36 +142,40 @@ class RoutingTables {
   }
 
   _getRoute (ledgerA, ledgerB, connector) {
-    const routesFromAToB = this.sources[ledgerA].destinations.get(ledgerB)
+    const routesFromAToB = this.sources.get(ledgerA).destinations.get(ledgerB)
     if (!routesFromAToB) return
     return routesFromAToB.get(connector)
   }
 
   /**
-   * Find the best intermediate ledger (`ledgerB`) to use after `ledgerA` on
-   * the way to `ledgerC`.
-   * This connector must have `[ledgerA, ledgerB]` as a pair.
+   * Find the best intermediate ledger (`nextLedger`) to use after `sourceLedger` on
+   * the way to `finalLedger`.
+   * This connector must have `[sourceLedger, nextLedger]` as a pair.
    *
-   * @param {URI} ledgerA
-   * @param {URI} ledgerC
+   * @param {IlpAddress} sourceAddress
+   * @param {IlpAddress} finalAddress
    * @param {String} finalAmount
    * @returns {Object}
    */
-  findBestHopForDestinationAmount (ledgerA, ledgerC, finalAmount) {
-    const nextHop = this._findBestHopForDestinationAmount(ledgerA, ledgerC, +finalAmount)
+  findBestHopForDestinationAmount (sourceAddress, finalAddress, finalAmount) {
+    const nextHop = this._findBestHopForDestinationAmount(sourceAddress, finalAddress, +finalAmount)
     if (!nextHop) return
-    const ledgerB = nextHop.bestRoute.nextLedger
-    const routeFromAToB = this._getLocalPairRoute(ledgerA, ledgerB)
-    const isFinal = ledgerB === ledgerC
+    // sourceLedger is the longest known prefix of sourceAddress (likewise for
+    // finalLedger/finalAddress).
+    const sourceLedger = nextHop.bestRoute.sourceLedger
+    const finalLedger = nextHop.bestRoute.destinationLedger
+    const nextLedger = nextHop.bestRoute.nextLedger
+    const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
+    const isFinal = nextLedger === finalLedger
     return {
       isFinal: isFinal,
       connector: nextHop.bestHop,
-      sourceLedger: ledgerA,
+      sourceLedger: sourceLedger,
       sourceAmount: nextHop.bestCost.toString(),
-      destinationLedger: ledgerB,
+      destinationLedger: nextLedger,
       destinationAmount: routeFromAToB.amountAt(nextHop.bestCost).toString(),
-      destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, ledgerB),
-      finalLedger: ledgerC,
+      destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, nextLedger),
+      finalLedger: finalLedger,
       finalAmount: finalAmount,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
@@ -184,26 +183,28 @@ class RoutingTables {
   }
 
   /**
-   * @param {URI} ledgerA
-   * @param {URI} ledgerC
+   * @param {IlpAddress} sourceAddress
+   * @param {IlpAddress} finalAddress
    * @param {String} sourceAmount
    * @returns {Object}
    */
-  findBestHopForSourceAmount (ledgerA, ledgerC, sourceAmount) {
-    const nextHop = this._findBestHopForSourceAmount(ledgerA, ledgerC, +sourceAmount)
+  findBestHopForSourceAmount (sourceAddress, finalAddress, sourceAmount) {
+    const nextHop = this._findBestHopForSourceAmount(sourceAddress, finalAddress, +sourceAmount)
     if (!nextHop) return
-    const ledgerB = nextHop.bestRoute.nextLedger
-    const routeFromAToB = this._getLocalPairRoute(ledgerA, ledgerB)
-    const isFinal = ledgerB === ledgerC
+    const sourceLedger = nextHop.bestRoute.sourceLedger
+    const finalLedger = nextHop.bestRoute.destinationLedger
+    const nextLedger = nextHop.bestRoute.nextLedger
+    const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
+    const isFinal = nextLedger === finalLedger
     return {
       isFinal: isFinal,
       connector: nextHop.bestHop,
-      sourceLedger: ledgerA,
+      sourceLedger: sourceLedger,
       sourceAmount: sourceAmount,
-      destinationLedger: ledgerB,
+      destinationLedger: nextLedger,
       destinationAmount: routeFromAToB.amountAt(+sourceAmount).toString(),
-      destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, ledgerB),
-      finalLedger: ledgerC,
+      destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, nextLedger),
+      finalLedger: finalLedger,
       finalAmount: nextHop.bestValue.toString(),
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
@@ -212,24 +213,26 @@ class RoutingTables {
 
   _findBestHopForSourceAmount (source, destination, amount) {
     debug('searching best hop from %s to %s for %s (by src amount)', source, destination, amount)
-    if (!this.sources[source]) {
+    const table = this.sources.resolve(source)
+    if (!table) {
       debug('source %s is not in known sources: %s',
-        source, Object.keys(this.sources))
+        source, Object.keys(this.sources.prefixes))
       return undefined
     }
     return this._rewriteLocalHop(
-      this.sources[source].findBestHopForSourceAmount(destination, amount))
+      table.findBestHopForSourceAmount(destination, amount))
   }
 
   _findBestHopForDestinationAmount (source, destination, amount) {
     debug('searching best hop from %s to %s for %s (by dst amount)', source, destination, amount)
-    if (!this.sources[source]) {
+    const table = this.sources.resolve(source)
+    if (!table) {
       debug('source %s is not in known sources: %s',
-        source, Object.keys(this.sources))
+        source, Object.keys(this.sources.prefixes))
       return undefined
     }
     return this._rewriteLocalHop(
-      this.sources[source].findBestHopForDestinationAmount(destination, amount))
+      table.findBestHopForDestinationAmount(destination, amount))
   }
 
   _rewriteLocalHop (hop) {
