@@ -1,7 +1,7 @@
 'use strict'
 
 const PrefixMap = require('./prefix-map')
-const debug = require('debug')('five-bells-routing:routing-table')
+const debug = require('debug')('ilp-routing:routing-table')
 
 class RoutingTable {
   constructor () {

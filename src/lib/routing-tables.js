@@ -1,6 +1,6 @@
 'use strict'
 
-const debug = require('debug')('five-bells-routing:routing-tables')
+const debug = require('debug')('ilp-routing:routing-tables')
 
 const PrefixMap = require('./prefix-map')
 const Route = require('./route')
@@ -46,6 +46,7 @@ class RoutingTables {
    */
   addRoute (_route) {
     const route = Route.fromData(_route)
+    debug('add route', route.connector, route.sourceLedger, route.sourceAccount)
     this.accounts[route.connector + ';' + route.sourceLedger] = route.sourceAccount
     if (route.destinationAccount) {
       this.accounts[route.connector + ';' + route.destinationLedger] = route.destinationAccount

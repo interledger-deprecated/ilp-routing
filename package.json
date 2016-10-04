@@ -1,5 +1,5 @@
 {
-  "name": "five-bells-routing",
+  "name": "ilp-routing",
   "version": "4.0.0",
   "description": "ILP routing layer utilities",
   "main": "index.js",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/interledger/five-bells-routing.git"
+    "url": "https://github.com/interledger/js-ilp-routing.git"
   },
   "keywords": [
     "ilp",
@@ -46,9 +46,9 @@
   "author": "Interledger Team <info@interledger.org>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/interledger/five-bells-routing/issues"
+    "url": "https://github.com/interledger/js-ilp-routing/issues"
   },
-  "homepage": "https://github.com/interledger/five-bells-routing",
+  "homepage": "https://github.com/interledger/js-ilp-routing",
   "config": {
     "ghooks": {
       "commit-msg": "validate-commit-msg"
