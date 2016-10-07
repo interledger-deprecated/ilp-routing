@@ -263,23 +263,49 @@ describe('RoutingTables', function () {
 
   describe('removeLedger', function () {
     it('removes all of a ledger\'s routes', function () {
-      this.tables.addRoute({
+      this.tables.addLocalRoutes([{
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
         connector: 'http://mary.example',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
-      })
+      }, {
+        source_ledger: ledgerA,
+        destination_ledger: ledgerC,
+        connector: 'http://mary.example',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }, {
+        source_ledger: ledgerC,
+        destination_ledger: ledgerA,
+        connector: 'http://mary.example',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }, {
+        source_ledger: ledgerC,
+        destination_ledger: ledgerB,
+        connector: 'http://mary.example',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }])
 
       // remove the new route
-      assert.equal(this.tables.toJSON(10).length, 3)
+      assert.equal(this.tables.toJSON(10).length, 6)
       this.tables.removeLedger(ledgerC)
       assert.equal(this.tables.toJSON(10).length, 2)
     })
 
     it('removes no other ledger\'s routes', function () {
+      this.tables.addLocalRoutes([{
+        source_ledger: ledgerC,
+        destination_ledger: ledgerA,
+        connector: 'http://mary.example',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }])
+
       // remove nonexistant ledger
-      assert.equal(this.tables.toJSON(10).length, 2)
+      assert.equal(this.tables.toJSON(10).length, 3)
       this.tables.removeLedger(ledgerC)
       assert.equal(this.tables.toJSON(10).length, 2)
     })
