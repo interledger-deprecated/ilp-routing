@@ -37,6 +37,14 @@ class RoutingTables {
     localRoutes.forEach((route) => this.addRoute(route))
   }
 
+  removeLedger (ledger) {
+    this.eachRoute((routeFromAToB, ledgerA, ledgerB, nextHop) => {
+      if (ledgerA === ledger || ledgerB === ledger) {
+        this._removeRoute(ledgerA, ledgerB, nextHop)
+      }
+    })
+  }
+
   /**
    * Given a `route` B→C, create a route A→C for each source ledger A with a
    * local route to B.
