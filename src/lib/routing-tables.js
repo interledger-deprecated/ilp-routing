@@ -38,10 +38,14 @@ class RoutingTables {
   }
 
   removeLedger (ledger) {
+    const removeList = []
     this.eachRoute((routeFromAToB, ledgerA, ledgerB, nextHop) => {
       if (ledgerA === ledger || ledgerB === ledger) {
-        this._removeRoute(ledgerA, ledgerB, nextHop)
+        removeList.push({ ledgerA, ledgerB, nextHop })
       }
+    })
+    removeList.forEach((route) => {
+      this._removeRoute(route.ledgerA, route.ledgerB, route.nextHop)
     })
   }
 
@@ -93,6 +97,7 @@ class RoutingTables {
 
   _removeRoute (ledgerB, ledgerC, connectorFromBToC) {
     this.eachSource((tableFromA, ledgerA) => {
+      if (ledgerA !== ledgerB) return
       tableFromA.removeRoute(ledgerC, connectorFromBToC)
     })
   }
