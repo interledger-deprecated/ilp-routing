@@ -6,7 +6,7 @@
 
 ### Route
 
-`RouteData` refers to the [Routes schema](https://github.com/interledger/five-bells-shared/blob/master/schemas/Routes.json) in five-bells-shared.
+`RouteData` refers to the [Routes schema](https://github.com/interledgerjs/five-bells-shared/blob/master/schemas/Routes.json) in five-bells-shared.
 
 #### `new Route(curve, hops, info)`
 #### `Route.fromData(routeData) ⇒ Route`
