@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/interledger/js-ilp-routing.git"
+    "url": "https://github.com/interledgerjs/ilp-routing.git"
   },
   "keywords": [
     "ilp",
@@ -46,9 +46,9 @@
   "author": "Interledger Team <info@interledger.org>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/interledger/js-ilp-routing/issues"
+    "url": "https://github.com/interledgerjs/ilp-routing/issues"
   },
-  "homepage": "https://github.com/interledger/js-ilp-routing",
+  "homepage": "https://github.com/interledgerjs/ilp-routing",
   "config": {
     "ghooks": {
       "commit-msg": "validate-commit-msg"
