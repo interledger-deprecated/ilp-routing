@@ -4,6 +4,10 @@ const PrefixMap = require('./prefix-map')
 const debug = require('debug')('ilp-routing:routing-table')
 
 class RoutingTable {
+  /**
+   * `nextHop` and `bestHop` are `IlpAddress`s referring to the connector's account
+   * on the source ledger.
+   */
   constructor () {
     this.destinations = new PrefixMap()
   }

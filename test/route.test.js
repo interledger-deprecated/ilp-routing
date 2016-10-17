@@ -14,10 +14,8 @@ const hopsABC = [ledgerA, ledgerB, ledgerC]
 const hopsADC = [ledgerA, ledgerD, ledgerC]
 const hopsBCD = [ledgerB, ledgerC, ledgerD]
 
-const mark = 'http://mark.example'
-const mary = 'http://mary.example'
-const markA = ledgerA + '/accounts/mark'
-const markC = ledgerC + '/accounts/mark'
+const markA = ledgerA + 'mark'
+const markC = ledgerC + 'mark'
 
 describe('Route', function () {
   beforeEach(function () {
@@ -29,7 +27,7 @@ describe('Route', function () {
       const route = new Route([[0, 0], [100, 200]], hopsABC, {
         minMessageWindow: 3,
         expiresAt: 1234,
-        connector: mark,
+        isLocal: true,
         sourceAccount: markA,
         destinationAccount: markC,
         additionalInfo: {foo: 'bar'}
@@ -43,7 +41,7 @@ describe('Route', function () {
 
       assert.equal(route.minMessageWindow, 3)
       assert.equal(route.expiresAt, 1234)
-      assert.equal(route.connector, mark)
+      assert.equal(route.isLocal, true)
       assert.equal(route.sourceAccount, markA)
       assert.equal(route.destinationAccount, markC)
       assert.deepStrictEqual(route.additionalInfo, {foo: 'bar'})
@@ -93,11 +91,11 @@ describe('Route', function () {
   describe('join', function () {
     it('succeeds if the routes are adjacent', function () {
       const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {
-        connector: mark,
+        isLocal: true,
         minMessageWindow: 1
       })
       const route2 = new Route([ [0, 0], [50, 60] ], hopsBCD, {
-        connector: mary,
+        isLocal: false,
         minMessageWindow: 2
       })
       const joinedRoute = route1.join(route2, 1000)
@@ -107,12 +105,27 @@ describe('Route', function () {
         [ [0, 0], [100, 60], [200, 60] ])
       // It concatenates the hops
       assert.deepEqual(joinedRoute.hops, [ledgerA, ledgerB, ledgerC, ledgerD])
-      // It uses the head route's connector
-      assert.equal(joinedRoute.connector, mark)
+      // It isn't a local pair.
+      assert.equal(joinedRoute.isLocal, false)
       // It combines the minMessageWindows
       assert.equal(joinedRoute.minMessageWindow, 3)
       // It sets an expiry in the future
       assert.ok(Date.now() < joinedRoute.expiresAt)
+    })
+
+    it('sets isLocal to true if both routes are local', function () {
+      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {
+        isLocal: true,
+        minMessageWindow: 1
+      })
+      const route2 = new Route([ [0, 0], [50, 60] ], hopsBCD, {
+        isLocal: true,
+        minMessageWindow: 2
+      })
+      const joinedRoute = route1.join(route2, 1000)
+
+      // It is a local pair.
+      assert.equal(joinedRoute.isLocal, true)
     })
 
     it('fails if the routes aren\'t adjacent', function () {
@@ -130,9 +143,9 @@ describe('Route', function () {
 
   describe('shiftY', function () {
     it('creates a shifted route', function () {
-      const route1 = new Route([ [0, 0], [50, 60], [100, 100] ], [ledgerA, ledgerB], {connector: mark})
+      const route1 = new Route([ [0, 0], [50, 60], [100, 100] ], [ledgerA, ledgerB], {isLocal: true})
       const route2 = route1.shiftY(1)
-      assert.equal(route2.connector, mark)
+      assert.equal(route2.isLocal, true)
       assert.deepEqual(route2.curve.points,
         [ [0, 1], [50, 61], [100, 101] ])
     })

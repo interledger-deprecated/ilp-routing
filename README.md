@@ -50,6 +50,7 @@ Check if a route has expired.
 
 Returns whether or not a new route was created (updates don't count).
 
+#### `tables.removeLedger(ledger)`
 #### `tables.removeExpiredRoutes()`
 #### `tables.toJSON(maxPoints) ⇒ RouteData[]`
 #### `tables.findBestHopForDestinationAmount(ledgerA, ledgerC, finalAmount) ⇒ Hop`

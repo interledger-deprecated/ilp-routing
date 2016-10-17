@@ -11,28 +11,32 @@ const PAIR = 'PAIR'
 
 class RoutingTables {
   /**
-   * @param {String} baseURI
    * @param {Object[]} localRoutes
    * @param {Integer} expiryDuration milliseconds
    */
-  constructor (baseURI, localRoutes, expiryDuration) {
-    this.baseURI = baseURI
+  constructor (localRoutes, expiryDuration) {
     this.expiryDuration = expiryDuration
     this.sources = new PrefixMap() // { "sourceLedger" => RoutingTable }
-    this.accounts = {} // { "connector;ledger" => accountURI }
+    this.localAccounts = {} // { "ledger" ⇒ accountURI }
     this.addLocalRoutes(localRoutes)
   }
 
   /**
    * @param {RouteData[]|Route[]} localRoutes - Each local route should include the optional
-   *   `destinationAccount` parameter. `connector` should always be `baseURI`.
+   *   `destinationAccount` parameter.
    */
   addLocalRoutes (_localRoutes) {
     const localRoutes = _localRoutes.map(Route.fromData)
     for (const localRoute of localRoutes) {
+      localRoute.isLocal = true
       const table = this.sources.get(localRoute.sourceLedger) ||
         this.sources.insert(localRoute.sourceLedger, new RoutingTable())
       table.addRoute(localRoute.destinationLedger, PAIR, localRoute)
+
+      this.localAccounts[localRoute.sourceLedger] = localRoute.sourceAccount
+      if (localRoute.destinationAccount) {
+        this.localAccounts[localRoute.destinationLedger] = localRoute.destinationAccount
+      }
     }
     localRoutes.forEach((route) => this.addRoute(route))
   }
@@ -58,27 +62,22 @@ class RoutingTables {
    */
   addRoute (_route) {
     const route = Route.fromData(_route)
-    debug('add route', route.connector, route.sourceLedger, route.sourceAccount)
-    this.accounts[route.connector + ';' + route.sourceLedger] = route.sourceAccount
-    if (route.destinationAccount) {
-      this.accounts[route.connector + ';' + route.destinationLedger] = route.destinationAccount
-    }
-
     let added = false
     this.eachSource((tableFromA, ledgerA) => {
       added = this._addRouteFromSource(tableFromA, ledgerA, route) || added
     })
+    if (added) debug('add route', route.sourceAccount, route.destinationLedger)
     return added
   }
 
   _addRouteFromSource (tableFromA, ledgerA, routeFromBToC) {
     const ledgerB = routeFromBToC.sourceLedger
     const ledgerC = routeFromBToC.destinationLedger
-    const connectorFromBToC = routeFromBToC.connector
+    const connectorFromBToC = routeFromBToC.sourceAccount
     let added = false
 
     // Don't create local route A→B→C if local route A→C already exists.
-    if (this.baseURI === connectorFromBToC && this._getLocalPairRoute(ledgerA, ledgerC)) return
+    if (routeFromBToC.isLocal && this._getLocalPairRoute(ledgerA, ledgerC)) return
     // Don't create A→B→C when A→B is not a local pair.
     const routeFromAToB = this._getLocalPairRoute(ledgerA, ledgerB)
     if (!routeFromAToB) return
@@ -139,26 +138,21 @@ class RoutingTables {
       table.destinations.each((routesByConnector, destinationLedger) => {
         const combinedRoute = combineRoutesByConnector(routesByConnector, maxPoints)
         const combinedRouteData = combinedRoute.toJSON()
-        combinedRouteData.connector = this.baseURI
-        combinedRouteData.source_account = this._getAccount(this.baseURI, sourceLedger)
+        combinedRouteData.source_account = this.localAccounts[combinedRoute.sourceLedger]
         routes.push(combinedRouteData)
       })
     })
     return routes
   }
 
-  _getAccount (connector, ledger) {
-    return this.accounts[connector + ';' + ledger]
-  }
-
   _getLocalPairRoute (ledgerA, ledgerB) {
     return this._getRoute(ledgerA, ledgerB, PAIR)
   }
 
-  _getRoute (ledgerA, ledgerB, connector) {
+  _getRoute (ledgerA, ledgerB, nextHop) {
     const routesFromAToB = this.sources.get(ledgerA).destinations.get(ledgerB)
     if (!routesFromAToB) return
-    return routesFromAToB.get(connector)
+    return routesFromAToB.get(nextHop)
   }
 
   /**
@@ -183,12 +177,12 @@ class RoutingTables {
     const isFinal = nextLedger === finalLedger
     return {
       isFinal: isFinal,
-      connector: nextHop.bestHop,
+      isLocal: nextHop.bestRoute.isLocal,
       sourceLedger: sourceLedger,
       sourceAmount: nextHop.bestCost.toString(),
       destinationLedger: nextLedger,
       destinationAmount: routeFromAToB.amountAt(nextHop.bestCost).toString(),
-      destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, nextLedger),
+      destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: finalAmount,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
@@ -212,12 +206,12 @@ class RoutingTables {
     const isFinal = nextLedger === finalLedger
     return {
       isFinal: isFinal,
-      connector: nextHop.bestHop,
+      isLocal: nextHop.bestRoute.isLocal,
       sourceLedger: sourceLedger,
       sourceAmount: sourceAmount,
       destinationLedger: nextLedger,
       destinationAmount: routeFromAToB.amountAt(+sourceAmount).toString(),
-      destinationCreditAccount: isFinal ? null : this._getAccount(nextHop.bestHop, nextLedger),
+      destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: nextHop.bestValue.toString(),
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
@@ -250,7 +244,9 @@ class RoutingTables {
   }
 
   _rewriteLocalHop (hop) {
-    if (hop && hop.bestHop === PAIR) hop.bestHop = this.baseURI
+    if (hop && hop.bestHop === PAIR) {
+      hop.bestHop = this.localAccounts[hop.bestRoute.destinationLedger]
+    }
     return hop
   }
 }

@@ -12,16 +12,15 @@ const ledgerD = 'ledgerD.'
 const ledgerE = 'ledgerE.'
 
 // connector users
-const markA = 'http://ledgerA.example/accounts/mark'
-const markB = 'http://ledgerB.example/accounts/mark'
+const markA = ledgerA + 'mark'
+const markB = ledgerB + 'mark'
 
 describe('RoutingTables', function () {
   beforeEach(function () {
     this.clock = sinon.useFakeTimers(START_DATE)
-    this.tables = new RoutingTables('http://mark.example', [{
+    this.tables = new RoutingTables([{
       source_ledger: ledgerA,
       destination_ledger: ledgerB,
-      connector: 'http://mark.example',
       min_message_window: 1,
       source_account: markA,
       destination_account: markB,
@@ -30,7 +29,6 @@ describe('RoutingTables', function () {
     }, {
       source_ledger: ledgerB,
       destination_ledger: ledgerA,
-      connector: 'http://mark.example',
       min_message_window: 1,
       source_account: markB,
       destination_account: markA,
@@ -49,13 +47,13 @@ describe('RoutingTables', function () {
         {
           source_ledger: ledgerB,
           destination_ledger: ledgerC,
-          connector: 'http://mark.example',
+          source_account: markB,
           min_message_window: 1,
           points: [ [0, 0], [100, 200] ]
         }, {
           source_ledger: ledgerC,
           destination_ledger: ledgerD,
-          connector: 'http://mark.example',
+          source_account: markB,
           min_message_window: 1,
           points: [ [0, 0], [100, 200] ]
         }
@@ -63,30 +61,30 @@ describe('RoutingTables', function () {
       this.tables.addRoute({
         source_ledger: ledgerD,
         destination_ledger: ledgerE,
-        connector: 'http://mary.example',
+        source_account: ledgerD + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [100, 200] ]
       })
 
       // A → B → C
       assertSubset(this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 20), {
-        connector: 'http://mark.example',
         destinationLedger: ledgerB,
+        destinationCreditAccount: ledgerB + 'mark',
         finalAmount: '20',
         minMessageWindow: 2
       })
       // A → B → C → D → E
       // It can't just skip from A→D, because it isn't a pair, even though its components are local.
       assertSubset(this.tables.findBestHopForSourceAmount(ledgerA, ledgerE, 20), {
-        connector: 'http://mark.example',
         destinationLedger: ledgerB,
+        destinationCreditAccount: ledgerB + 'mark',
         finalAmount: '80',
         minMessageWindow: 4
       })
       // C → D → E
       assertSubset(this.tables.findBestHopForSourceAmount(ledgerC, ledgerE, 20), {
-        connector: 'http://mary.example',
         destinationLedger: ledgerD,
+        destinationCreditAccount: ledgerD + 'mary',
         finalAmount: '80',
         minMessageWindow: 2
       })
@@ -105,7 +103,7 @@ describe('RoutingTables', function () {
       assert.equal(this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerB + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       }), true)
@@ -113,12 +111,12 @@ describe('RoutingTables', function () {
       assert.equal(this.tables.addRoute({
         source_ledger: ledgerC,
         destination_ledger: ledgerB,
-        connector: 'http://mary.example',
+        source_account: ledgerC + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [200, 100] ]
       }), false)
       assert.strictEqual(
-        this.tables.sources.get(ledgerA).destinations.get(ledgerB).get('http://mary.example'),
+        this.tables.sources.get(ledgerA).destinations.get(ledgerB).get(ledgerC + 'mary'),
         undefined)
     })
 
@@ -126,13 +124,13 @@ describe('RoutingTables', function () {
       assert.equal(this.tables.addRoute({
         source_ledger: ledgerA,
         destination_ledger: ledgerB,
-        connector: 'http://mary.example',
+        source_account: ledgerA + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [200, 9999] ]
       }), false)
       // Dont create a second A→B
       assert.strictEqual(
-        this.tables.sources.get(ledgerA).destinations.get(ledgerB).get('http://mary.example'),
+        this.tables.sources.get(ledgerA).destinations.get(ledgerB).get(ledgerA + 'mary'),
         undefined)
     })
 
@@ -141,23 +139,23 @@ describe('RoutingTables', function () {
         {
           source_ledger: ledgerA,
           destination_ledger: ledgerC,
-          connector: 'http://mark.example',
+          source_account: ledgerA + 'mark',
           min_message_window: 1,
           points: [ [0, 0], [100, 999] ]
         }, {
           source_ledger: ledgerC,
           destination_ledger: ledgerB,
-          connector: 'http://mark.example',
+          source_account: ledgerC + 'mark',
           min_message_window: 1,
           points: [ [0, 0], [100, 999] ]
         }
       ])
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 100),
-        { bestHop: 'http://mark.example', bestValue: 50 })
+        { bestHop: markB, bestValue: 50 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 200),
-        { bestHop: 'http://mark.example', bestValue: 100 })
+        { bestHop: markB, bestValue: 100 })
     })
   })
 
@@ -165,58 +163,58 @@ describe('RoutingTables', function () {
     it('finds the best next hop when there is one route', function () {
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 0),
-        { bestHop: 'http://mark.example', bestValue: 0 })
+        { bestHop: markB, bestValue: 0 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 100),
-        { bestHop: 'http://mark.example', bestValue: 50 })
+        { bestHop: markB, bestValue: 50 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 200),
-        { bestHop: 'http://mark.example', bestValue: 100 })
+        { bestHop: markB, bestValue: 100 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 300),
-        { bestHop: 'http://mark.example', bestValue: 100 })
+        { bestHop: markB, bestValue: 100 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerB, ledgerA, 100),
-        { bestHop: 'http://mark.example', bestValue: 200 })
+        { bestHop: markA, bestValue: 200 })
     })
 
     it('finds the best next hop when there are multiple hops', function () {
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerB + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [200, 100] ]
       })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: 'http://mary.example', bestValue: 25 })
+        { bestHop: ledgerB + 'mary', bestValue: 25 })
     })
 
     it('finds the best next hop when there are multiple routes', function () {
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerB + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       })
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://martin.example',
+        source_account: ledgerB + 'martin',
         min_message_window: 1,
         points: [ [0, 0], [100, 100] ]
       })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: 'http://mary.example', bestValue: 60 })
+        { bestHop: ledgerB + 'mary', bestValue: 60 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 150),
-        { bestHop: 'http://martin.example', bestValue: 75 })
+        { bestHop: ledgerB + 'martin', bestValue: 75 })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 200),
-        { bestHop: 'http://martin.example', bestValue: 100 })
+        { bestHop: ledgerB + 'martin', bestValue: 100 })
     })
   })
 
@@ -224,19 +222,19 @@ describe('RoutingTables', function () {
     it('finds the best next hop when there is one route', function () {
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 0),
-        { bestHop: 'http://mark.example', bestCost: 0 })
+        { bestHop: markB, bestCost: 0 })
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 50),
-        { bestHop: 'http://mark.example', bestCost: 100 })
+        { bestHop: markB, bestCost: 100 })
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 100),
-        { bestHop: 'http://mark.example', bestCost: 200 })
+        { bestHop: markB, bestCost: 200 })
       assert.equal(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 150),
         undefined)
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerB, ledgerA, 200),
-        { bestHop: 'http://mark.example', bestCost: 100 })
+        { bestHop: markA, bestCost: 100 })
     })
   })
 
@@ -245,7 +243,7 @@ describe('RoutingTables', function () {
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerB + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       })
@@ -266,25 +264,25 @@ describe('RoutingTables', function () {
       this.tables.addLocalRoutes([{
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerB + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       }, {
         source_ledger: ledgerA,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerA + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       }, {
         source_ledger: ledgerC,
         destination_ledger: ledgerA,
-        connector: 'http://mary.example',
+        source_account: ledgerC + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       }, {
         source_ledger: ledgerC,
         destination_ledger: ledgerB,
-        connector: 'http://mary.example',
+        source_account: ledgerC + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       }])
@@ -299,7 +297,7 @@ describe('RoutingTables', function () {
       this.tables.addLocalRoutes([{
         source_ledger: ledgerC,
         destination_ledger: ledgerA,
-        connector: 'http://mary.example',
+        source_account: ledgerC + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       }])
@@ -316,14 +314,14 @@ describe('RoutingTables', function () {
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
+        source_account: ledgerB + 'mary',
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       })
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://martin.example',
+        source_account: ledgerB + 'martin',
         min_message_window: 2, // this min_message_window is higher, so it is used
         points: [ [0, 0], [100, 100] ]
       })
@@ -331,14 +329,12 @@ describe('RoutingTables', function () {
       assert.deepStrictEqual(this.tables.toJSON(10), [{
         source_ledger: ledgerA,
         destination_ledger: ledgerB,
-        connector: 'http://mark.example',
         min_message_window: 1,
         source_account: markA,
         points: [ [0, 0], [200, 100] ]
       }, {
         source_ledger: ledgerA,
         destination_ledger: ledgerC,
-        connector: 'http://mark.example',
         min_message_window: 3,
         source_account: markA,
         points: [
@@ -350,7 +346,6 @@ describe('RoutingTables', function () {
       }, {
         source_ledger: ledgerB,
         destination_ledger: ledgerA,
-        connector: 'http://mark.example',
         min_message_window: 1,
         source_account: markB,
         points: [ [0, 0], [100, 200] ]
@@ -386,14 +381,14 @@ describe('RoutingTables', function () {
         this.tables.addRoute({
           source_ledger: ledgerB,
           destination_ledger: ledgerC,
-          connector: 'http://mary.example',
+          source_account: ledgerB + 'mary',
           min_message_window: 1,
           points: test.mary
         })
         this.tables.addRoute({
           source_ledger: ledgerB,
           destination_ledger: ledgerC,
-          connector: 'http://martin.example',
+          source_account: ledgerB + 'martin',
           min_message_window: 1,
           points: test.martin
         })
@@ -401,7 +396,6 @@ describe('RoutingTables', function () {
         assert.deepStrictEqual(this.tables.toJSON(10)[1], {
           source_ledger: ledgerA,
           destination_ledger: ledgerC,
-          connector: 'http://mark.example',
           min_message_window: 2,
           source_account: markA,
           points: test.output
@@ -415,21 +409,20 @@ describe('RoutingTables', function () {
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
         min_message_window: 1,
-        source_account: ledgerB + '/accounts/mary',
+        source_account: ledgerB + 'mary',
         points: [ [0, 0], [200, 100] ]
       })
       assert.deepEqual(
         this.tables.findBestHopForDestinationAmount(ledgerA, ledgerC, '25'),
         {
           isFinal: false,
-          connector: 'http://mary.example',
+          isLocal: false,
           sourceLedger: ledgerA,
-          sourceAmount: (100).toString(),
+          sourceAmount: '100',
           destinationLedger: ledgerB,
-          destinationAmount: (50).toString(),
-          destinationCreditAccount: ledgerB + '/accounts/mary',
+          destinationAmount: '50',
+          destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
           minMessageWindow: 2,
@@ -442,11 +435,11 @@ describe('RoutingTables', function () {
         this.tables.findBestHopForDestinationAmount(ledgerA + 'alice', ledgerB + 'bob', '50'),
         {
           isFinal: true,
-          connector: 'http://mark.example',
+          isLocal: true,
           sourceLedger: ledgerA,
-          sourceAmount: (100).toString(),
+          sourceAmount: '100',
           destinationLedger: ledgerB,
-          destinationAmount: (50).toString(),
+          destinationAmount: '50',
           destinationCreditAccount: null,
           finalLedger: ledgerB,
           finalAmount: '50',
@@ -459,21 +452,20 @@ describe('RoutingTables', function () {
       this.tables.addRoute({
         source_ledger: ledgerB,
         destination_ledger: ledgerC,
-        connector: 'http://mary.example',
         min_message_window: 1,
-        source_account: ledgerB + '/accounts/mary',
+        source_account: ledgerB + 'mary',
         points: [ [0, 0], [200, 100] ]
       })
       assert.deepEqual(
         this.tables.findBestHopForDestinationAmount(ledgerA, ledgerC + 'subledger1.bob', '25'),
         {
           isFinal: false,
-          connector: 'http://mary.example',
+          isLocal: false,
           sourceLedger: ledgerA,
-          sourceAmount: (100).toString(),
+          sourceAmount: '100',
           destinationLedger: ledgerB,
-          destinationAmount: (50).toString(),
-          destinationCreditAccount: ledgerB + '/accounts/mary',
+          destinationAmount: '50',
+          destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
           minMessageWindow: 2,
@@ -488,14 +480,14 @@ describe('RoutingTables', function () {
         this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, '100'),
         {
           isFinal: true,
-          connector: 'http://mark.example',
+          isLocal: true,
           sourceLedger: ledgerA,
           sourceAmount: '100',
           destinationLedger: ledgerB,
-          destinationAmount: (50).toString(),
+          destinationAmount: '50',
           destinationCreditAccount: null,
           finalLedger: ledgerB,
-          finalAmount: (50).toString(),
+          finalAmount: '50',
           minMessageWindow: 1,
           additionalInfo: {rate_info: '0.5'}
         })

@@ -9,7 +9,7 @@ class Route {
    * @param {Object} info
    * @param {Number} info.minMessageWindow
    * @param {Number} info.expiresAt
-   * @param {String} info.connector
+   * @param {Boolean} info.isLocal
    * @param {String} info.sourceAccount
    * @param {String} info.destinationAccount
    * @param {Object} info.additionalInfo
@@ -25,7 +25,7 @@ class Route {
     this.expiresAt = info.expiresAt
     this.additionalInfo = info.additionalInfo
 
-    this.connector = info.connector
+    this.isLocal = info.isLocal
     this.sourceAccount = info.sourceAccount
     this.destinationAccount = info.destinationAccount
   }
@@ -43,7 +43,8 @@ class Route {
     const combinedCurve = this.curve.combine(alternateRoute.curve)
     const combinedHops = this._simpleHops()
     return new Route(combinedCurve, combinedHops, {
-      minMessageWindow: Math.max(this.minMessageWindow, alternateRoute.minMessageWindow)
+      minMessageWindow: Math.max(this.minMessageWindow, alternateRoute.minMessageWindow),
+      isLocal: false
     })
   }
 
@@ -64,7 +65,7 @@ class Route {
     const joinedHops = this.hops.concat(tailRoute.hops.slice(1))
     return new Route(joinedCurve, joinedHops, {
       minMessageWindow: this.minMessageWindow + tailRoute.minMessageWindow,
-      connector: this.connector,
+      isLocal: this.isLocal && tailRoute.isLocal,
       sourceAccount: this.sourceAccount,
       expiresAt: Date.now() + expiryDuration
     })
@@ -85,7 +86,8 @@ class Route {
   simplify (maxPoints) {
     return new Route(this.curve.simplify(maxPoints), this._simpleHops(), {
       minMessageWindow: this.minMessageWindow,
-      additionalInfo: this.additionalInfo
+      additionalInfo: this.additionalInfo,
+      isLocal: this.isLocal
     })
   }
 
@@ -103,7 +105,6 @@ class Route {
     return {
       source_ledger: this.sourceLedger,
       destination_ledger: this.destinationLedger,
-      connector: this.connector,
       points: this.getPoints(),
       min_message_window: this.minMessageWindow,
       source_account: this.sourceAccount
@@ -128,7 +129,7 @@ function dataToRoute (data) {
     data.destination_ledger
   ], {
     minMessageWindow: data.min_message_window,
-    connector: data.connector,
+    isLocal: false,
     sourceAccount: data.source_account,
     destinationAccount: data.destination_account,
     additionalInfo: data.additional_info
