@@ -120,6 +120,24 @@ describe('RoutingTables', function () {
         undefined)
     })
 
+    it('creates a route with a custom prefix, if supplied', function () {
+      const route = {
+        target_prefix: 'prefix.',
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerC + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }
+
+      // will be stored in destinations under 'prefix.'
+      assert.equal(this.tables.addRoute(route), true)
+
+      assertSubset(
+        this.tables.sources.get(ledgerA).destinations.get('prefix.').get(ledgerC + 'mary'),
+        { destinationLedger: ledgerC, targetPrefix: 'prefix.' })
+    })
+
     it('doesn\'t override local pair paths with a remote one', function () {
       assert.equal(this.tables.addRoute({
         source_ledger: ledgerA,
