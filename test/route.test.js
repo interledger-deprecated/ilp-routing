@@ -38,6 +38,8 @@ describe('Route', function () {
       assert.equal(route.sourceLedger, ledgerA)
       assert.equal(route.nextLedger, ledgerB)
       assert.equal(route.destinationLedger, ledgerC)
+      assert.equal(route.targetPrefix, route.destinationLedger,
+        'should default target prefix to destination ledger')
 
       assert.equal(route.minMessageWindow, 3)
       assert.equal(route.expiresAt, 1234)

@@ -66,13 +66,13 @@ class RoutingTables {
     this.eachSource((tableFromA, ledgerA) => {
       added = this._addRouteFromSource(tableFromA, ledgerA, route) || added
     })
-    if (added) debug('add route', route.sourceAccount, route.destinationLedger)
+    if (added) debug('add route matching', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
     return added
   }
 
   _addRouteFromSource (tableFromA, ledgerA, routeFromBToC) {
     const ledgerB = routeFromBToC.sourceLedger
-    const ledgerC = routeFromBToC.destinationLedger
+    const ledgerC = routeFromBToC.targetPrefix
     const connectorFromBToC = routeFromBToC.sourceAccount
     let added = false
 

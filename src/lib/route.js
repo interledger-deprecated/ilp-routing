@@ -13,6 +13,7 @@ class Route {
    * @param {String} info.sourceAccount
    * @param {String} info.destinationAccount
    * @param {Object} info.additionalInfo
+   * @param {String} info.targetPrefix
    */
   constructor (curve, hops, info) {
     this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
@@ -20,6 +21,11 @@ class Route {
     this.sourceLedger = hops[0]
     this.nextLedger = hops[1]
     this.destinationLedger = hops[hops.length - 1]
+
+    // if targetPrefix is specified, then destinations matching 'targetPrefix'
+    // will follow this route, rather than destinations matching
+    // 'destinationLedger'
+    this.targetPrefix = info.targetPrefix || this.destinationLedger
 
     this.minMessageWindow = info.minMessageWindow
     this.expiresAt = info.expiresAt
@@ -67,7 +73,8 @@ class Route {
       minMessageWindow: this.minMessageWindow + tailRoute.minMessageWindow,
       isLocal: this.isLocal && tailRoute.isLocal,
       sourceAccount: this.sourceAccount,
-      expiresAt: Date.now() + expiryDuration
+      expiresAt: Date.now() + expiryDuration,
+      targetPrefix: tailRoute.targetPrefix
     })
   }
 
@@ -87,7 +94,8 @@ class Route {
     return new Route(this.curve.simplify(maxPoints), this._simpleHops(), {
       minMessageWindow: this.minMessageWindow,
       additionalInfo: this.additionalInfo,
-      isLocal: this.isLocal
+      isLocal: this.isLocal,
+      targetPrefix: this.targetPrefix
     })
   }
 
@@ -132,7 +140,8 @@ function dataToRoute (data) {
     isLocal: false,
     sourceAccount: data.source_account,
     destinationAccount: data.destination_account,
-    additionalInfo: data.additional_info
+    additionalInfo: data.additional_info,
+    targetPrefix: data.target_prefix
   })
 }
 
