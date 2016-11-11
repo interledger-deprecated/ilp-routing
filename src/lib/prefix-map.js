@@ -1,6 +1,6 @@
 'use strict'
 
-const sortedIndex = require('lodash/sortedIndex')
+const findIndex = require('lodash/findIndex')
 
 /**
  * A key-value map where the members' keys represent prefixes.
@@ -26,12 +26,11 @@ class PrefixMap {
 
   resolve (key) {
     // Exact match
-    if (this.items[key]) return this.items[key]
-    // key match
-    const index = sortedIndex(this.prefixes, key) - 1
+    if (this.items[key]) return this.items[key] // redundant; optimization?
+    // prefix match (the list is in descending length order, and secondarily, reverse-alphabetically)
+    const index = findIndex(this.prefixes, (e) => { return key.startsWith(e) })
     if (index === -1) return null
     const prefix = this.prefixes[index]
-    if (!key.startsWith(prefix)) return null
     return this.items[prefix]
   }
 
@@ -48,15 +47,19 @@ class PrefixMap {
 
   insert (prefix, item) {
     if (!this.items[prefix]) {
-      this.prefixes.splice(
-        sortedIndex(this.prefixes, prefix), 0, prefix)
+      const index = findIndex(this.prefixes, (e) => { return prefix.length > e.length || prefix > e })
+      if (index === -1) {
+        this.prefixes.push(prefix)
+      } else {
+        this.prefixes.splice(index, 0, prefix)
+      }
     }
     this.items[prefix] = item
     return item
   }
 
   delete (prefix) {
-    const index = sortedIndex(this.prefixes, prefix)
+    const index = this.prefixes.indexOf(prefix)
     if (this.prefixes[index] === prefix) this.prefixes.splice(index, 1)
     delete this.items[prefix]
   }

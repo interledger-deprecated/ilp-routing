@@ -344,30 +344,31 @@ describe('RoutingTables', function () {
         points: [ [0, 0], [100, 100] ]
       })
 
-      assert.deepStrictEqual(this.tables.toJSON(10), [{
-        source_ledger: ledgerA,
-        destination_ledger: ledgerB,
-        min_message_window: 1,
-        source_account: markA,
-        points: [ [0, 0], [200, 100] ]
-      }, {
-        source_ledger: ledgerA,
-        destination_ledger: ledgerC,
-        min_message_window: 3,
-        source_account: markA,
-        points: [
-          [0, 0], /* .. mary .. */
-          [100, 60], /* .. mary (max) .. */
-          [120, 60], /* .. mark .. */
-          [200, 100] /* .. mark (max) */
-        ]
-      }, {
-        source_ledger: ledgerB,
-        destination_ledger: ledgerA,
-        min_message_window: 1,
-        source_account: markB,
-        points: [ [0, 0], [100, 200] ]
-      }])
+      assert.deepStrictEqual(this.tables.toJSON(10), [
+        {
+          source_ledger: ledgerB,
+          destination_ledger: ledgerA,
+          min_message_window: 1,
+          source_account: markB,
+          points: [ [0, 0], [100, 200] ]
+        }, {
+          source_ledger: ledgerA,
+          destination_ledger: ledgerC,
+          min_message_window: 3,
+          source_account: markA,
+          points: [
+            [0, 0], /* .. mary .. */
+            [100, 60], /* .. mary (max) .. */
+            [120, 60], /* .. mark .. */
+            [200, 100] /* .. mark (max) */
+          ]
+        }, {
+          source_ledger: ledgerA,
+          destination_ledger: ledgerB,
+          min_message_window: 1,
+          source_account: markA,
+          points: [ [0, 0], [200, 100] ]
+        }])
     })
 
     ;[

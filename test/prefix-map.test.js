@@ -14,7 +14,7 @@ describe('PrefixMap', function () {
       this.map.insert('foo', {foo: 1})
       assert.deepEqual(this.map.keys(), ['foo'])
       this.map.insert('bar', {bar: 1})
-      assert.deepEqual(this.map.keys(), ['bar', 'foo'])
+      assert.deepEqual(this.map.keys(), ['foo', 'bar'])
     })
   })
 
@@ -50,9 +50,12 @@ describe('PrefixMap', function () {
     it('supports a catch-all key', function () {
       this.map.insert('', {any: 1})
       this.map.insert('foo', {foo: 1})
+      this.map.insert('bar', {bar: 1})
       assert.deepEqual(this.map.resolve('foo'), {foo: 1})
       assert.deepEqual(this.map.resolve('fo'), {any: 1})
       assert.deepEqual(this.map.resolve('f'), {any: 1})
+      assert.deepEqual(this.map.resolve('bar'), {bar: 1})
+      assert.deepEqual(this.map.resolve('baz'), {any: 1})
       assert.deepEqual(this.map.resolve(''), {any: 1})
     })
   })
@@ -82,7 +85,7 @@ describe('PrefixMap', function () {
         assert.deepEqual(item, {[key]: 1})
         keys.push(key)
       })
-      assert.deepEqual(keys, ['bar', 'foo'])
+      assert.deepEqual(keys, ['foo', 'bar'])
     })
   })
 
