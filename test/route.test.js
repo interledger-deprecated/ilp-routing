@@ -56,6 +56,10 @@ describe('Route', function () {
       it('finds the corresponding amount', function () {
         assert.equal(route.amountAt(55), 110)
       })
+
+      it('returns 0 if the actual value is negative', function () {
+        assert.equal(route.shiftY(-40).amountAt(10), 0)
+      })
     })
 
     describe('amountReverse', function () {

@@ -37,7 +37,7 @@ class Route {
   }
 
   // Proxy some functions to the LiquidityCurve.
-  amountAt (x) { return this.curve.amountAt(x) }
+  amountAt (x) { return Math.max(0, this.curve.amountAt(x)) }
   amountReverse (y) { return this.curve.amountReverse(y) }
   getPoints () { return this.curve.getPoints() }
 

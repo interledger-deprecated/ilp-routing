@@ -133,6 +133,9 @@ class RoutingTables {
    * @returns {Routes}
    */
   toJSON (maxPoints) {
+    if (typeof maxPoints !== 'number' || maxPoints <= 0) {
+      throw new TypeError('RoutingTables#toJSON maxPoints must be a positive number')
+    }
     const routes = []
     this.eachSource((table, sourceLedger) => {
       table.destinations.each((routesByConnector, destinationLedger) => {
