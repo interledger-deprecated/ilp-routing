@@ -421,6 +421,18 @@ describe('RoutingTables', function () {
         })
       })
     }, this)
+
+    it('throws TypeError if maxPoints is not a number', function () {
+      assert.throws(() => {
+        this.tables.toJSON()
+      }, /TypeError: RoutingTables#toJSON maxPoints must be a positive number/)
+    })
+
+    it('throws TypeError if maxPoints is negative', function () {
+      assert.throws(() => {
+        this.tables.toJSON(-5)
+      }, /TypeError: RoutingTables#toJSON maxPoints must be a positive number/)
+    })
   })
 
   describe('findBestHopForDestinationAmount', function () {

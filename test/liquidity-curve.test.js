@@ -6,26 +6,47 @@ const LiquidityCurve = require('../src/lib/liquidity-curve')
 describe('LiquidityCurve', function () {
   describe('constructor', function () {
     it('saves the points', function () {
-      const points = []
+      const points = [ [1, 2], [3, 4] ]
       const curve = new LiquidityCurve(points)
-      assert.equal(curve.points, points)
+      assert.deepEqual(curve.points, points)
     })
   })
 
   describe('setPoints', function () {
     it('sets the points', function () {
       const curve = new LiquidityCurve([])
-      const points = []
+      const points = [ [1, 2], [3, 4] ]
       curve.setPoints(points)
-      assert.equal(curve.points, points)
+      assert.deepEqual(curve.points, points)
+    })
+
+    it('throws InvalidLiquidityCurveError if a point has a negative x-coordinate', function () {
+      const curve = new LiquidityCurve([])
+      assert.throws(() => {
+        curve.setPoints([ [-1, 5], [1, 5] ])
+      }, /InvalidLiquidityCurveError: Curve has point with negative x-coordinate/)
+    })
+
+    it('throws InvalidLiquidityCurveError if the x-coordinates are not strictly increasing', function () {
+      const curve = new LiquidityCurve([])
+      assert.throws(() => {
+        curve.setPoints([ [1, 1], [3, 3], [3, 5] ])
+      }, /InvalidLiquidityCurveError: Curve x-coordinates must strictly increase in series/)
+    })
+
+    it('throws InvalidLiquidityCurveError if the y-coordinates are not increasing', function () {
+      const curve = new LiquidityCurve([])
+      assert.throws(() => {
+        curve.setPoints([ [1, 1], [3, 3], [5, 2] ])
+      }, /InvalidLiquidityCurveError: Curve y-coordinates must increase in series/)
     })
   })
 
   describe('getPoints', function () {
     it('returns the points', function () {
-      const points = []
+      const points = [ [1, 2], [3, 4] ]
       const curve = new LiquidityCurve(points)
-      assert.equal(curve.getPoints(), points)
+      assert.deepEqual(curve.getPoints(), points)
     })
   })
 
@@ -52,6 +73,10 @@ describe('LiquidityCurve', function () {
     it('returns an exact "y" value when possible', function () {
       const curve = new LiquidityCurve([[0, 0], [50, 100], [100, 1000]])
       assert.equal(curve.amountAt(50), 100)
+    })
+
+    it('returns negative values', function () {
+      assert.equal(curve.shiftY(-40).amountAt(10), -20)
     })
   })
 
@@ -97,13 +122,6 @@ describe('LiquidityCurve', function () {
       assert.deepEqual(curve2.combine(curve1).getPoints(), [[0, 0], [50, 60]])
     })
 
-    it('ignores duplicate points', function () {
-      const curve1 = new LiquidityCurve([ [0, 0], [50, 60], [50, 60] ])
-      const curve2 = new LiquidityCurve([ [0, 0], [0, 0], [100, 100] ])
-      assert.deepEqual(curve1.combine(curve2).getPoints(),
-        [ [0, 0], [50, 60], [60, 60], [100, 100] ])
-    })
-
     it('finds an intersection between two slopes', function () {
       const curve1 = new LiquidityCurve([ [0, 0], [100, 1000] ])
       const curve2 = new LiquidityCurve([ [0, 0], [100 / 3, 450], [200 / 3, 550] ])
@@ -132,6 +150,14 @@ describe('LiquidityCurve', function () {
       const joinedCurve = curve1.join(curve2)
       assert.deepEqual(joinedCurve.points,
         [ [0, 0], [50, 150] ])
+    })
+
+    it('handles negative y-coordinates', function () {
+      const curve1 = new LiquidityCurve([ [0, -1], [10, 1] ])
+      const curve2 = new LiquidityCurve([ [0, -1], [1, 2] ])
+      const joinedCurve = curve1.join(curve2)
+      assert.deepEqual(joinedCurve.points,
+        [ [0, -1], [5, -1], [10, 2] ])
     })
   })
 

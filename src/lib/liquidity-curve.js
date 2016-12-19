@@ -8,19 +8,35 @@ class LiquidityCurve {
   }
 
   setPoints (points) {
-    this.points = points
+    let prev
+    this.points = points.slice()
+    for (let i = 0; i < this.points.length; i++) {
+      let point = this.points[i]
+      if (point[0] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative x-coordinate')
+      if (prev && point[0] <= prev[0]) {
+        throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series')
+      }
+      if (prev && point[1] < prev[1]) {
+        throw new InvalidLiquidityCurveError('Curve y-coordinates must increase in series')
+      }
+      prev = point
+    }
   }
 
   getPoints () {
     return this.points
   }
 
+  /**
+   * Note: LiquidityCurve#amountAt can return negative values, whereas Route#amountAt
+   * will only return >=0. This is because LiquidityCurve#amountAt is used in `join()`,
+   * while Route#amountAt is used externally.
+   */
   amountAt (x) {
-    if (x < this.points[0][0]) return 0
+    if (x < this.points[0][0]) return Math.min(0, this.points[0][1])
     if (x === this.points[0][0]) return this.points[0][1]
-    if (this.points[this.points.length - 1][0] <= x) {
-      return this.points[this.points.length - 1][1]
-    }
+    const lastPoint = this.points[this.points.length - 1]
+    if (lastPoint[0] <= x) return lastPoint[1]
 
     let i; for (i = 0; this.points[i][0] < x; i++) ;
 
@@ -184,6 +200,13 @@ function intersectLineSegments (line0, line1) {
   if (x < line0.x0 || line0.x1 < x) return
   if (x < line1.x0 || line1.x1 < x) return
   return [x, y]
+}
+
+class InvalidLiquidityCurveError extends Error {
+  constructor (message) {
+    super(message)
+    this.name = 'InvalidLiquidityCurveError'
+  }
 }
 
 module.exports = LiquidityCurve
