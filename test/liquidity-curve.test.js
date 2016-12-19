@@ -6,7 +6,7 @@ const LiquidityCurve = require('../src/lib/liquidity-curve')
 describe('LiquidityCurve', function () {
   describe('constructor', function () {
     it('saves the points', function () {
-      const points = []
+      const points = [ [1, 2], [3, 4] ]
       const curve = new LiquidityCurve(points)
       assert.deepEqual(curve.points, points)
     })
@@ -15,7 +15,7 @@ describe('LiquidityCurve', function () {
   describe('setPoints', function () {
     it('sets the points', function () {
       const curve = new LiquidityCurve([])
-      const points = []
+      const points = [ [1, 2], [3, 4] ]
       curve.setPoints(points)
       assert.deepEqual(curve.points, points)
     })
@@ -44,7 +44,7 @@ describe('LiquidityCurve', function () {
 
   describe('getPoints', function () {
     it('returns the points', function () {
-      const points = []
+      const points = [ [1, 2], [3, 4] ]
       const curve = new LiquidityCurve(points)
       assert.deepEqual(curve.getPoints(), points)
     })
@@ -157,7 +157,7 @@ describe('LiquidityCurve', function () {
       const curve2 = new LiquidityCurve([ [0, -1], [1, 2] ])
       const joinedCurve = curve1.join(curve2)
       assert.deepEqual(joinedCurve.points,
-        [ [0, 0], [5, -1], [10, 2] ])
+        [ [0, -1], [5, -1], [10, 2] ])
     })
   })
 

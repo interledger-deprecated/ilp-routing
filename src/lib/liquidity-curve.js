@@ -13,9 +13,6 @@ class LiquidityCurve {
     for (let i = 0; i < this.points.length; i++) {
       let point = this.points[i]
       if (point[0] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative x-coordinate')
-      // If the y-coordinate is negative, pretend that it isn't for the sake of
-      // validating the increasing series. `Route#amountAt` never returns a negative value, anyway.
-      if (point[1] < 0) point = [point[0], 0]
       if (prev && point[0] <= prev[0]) {
         throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series')
       }
@@ -36,7 +33,7 @@ class LiquidityCurve {
    * while Route#amountAt is used externally.
    */
   amountAt (x) {
-    if (x < this.points[0][0]) return 0
+    if (x < this.points[0][0]) return Math.min(0, this.points[0][1])
     if (x === this.points[0][0]) return this.points[0][1]
     const lastPoint = this.points[this.points.length - 1]
     if (lastPoint[0] <= x) return lastPoint[1]
