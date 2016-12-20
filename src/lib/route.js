@@ -1,5 +1,7 @@
 'use strict'
 
+const isUndefined = require('lodash/fp/isUndefined')
+const omitUndefined = require('lodash/fp/omitBy')(isUndefined)
 const LiquidityCurve = require('./liquidity-curve')
 
 class Route {
@@ -14,6 +16,8 @@ class Route {
    * @param {String} info.destinationAccount
    * @param {Object} info.additionalInfo
    * @param {String} info.targetPrefix
+   * @param {Integer} info.destinationScale
+   * @param {Integer} info.destinationPrecision
    */
   constructor (curve, hops, info) {
     this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
@@ -34,6 +38,14 @@ class Route {
     this.isLocal = info.isLocal
     this.sourceAccount = info.sourceAccount
     this.destinationAccount = info.destinationAccount
+    this.destinationPrecision = info.destinationPrecision
+    this.destinationScale = info.destinationScale
+
+    const hasPrecision = typeof this.destinationPrecision === 'number'
+    const hasScale = typeof this.destinationScale === 'number'
+    if ((hasPrecision && !hasScale) || (!hasPrecision && hasScale)) {
+      throw new Error('Missing destinationPrecision or destinationScale')
+    }
   }
 
   // Proxy some functions to the LiquidityCurve.
@@ -50,7 +62,10 @@ class Route {
     const combinedHops = this._simpleHops()
     return new Route(combinedCurve, combinedHops, {
       minMessageWindow: Math.max(this.minMessageWindow, alternateRoute.minMessageWindow),
-      isLocal: false
+      isLocal: false,
+      // If either route knows the destination precision/scale, use it.
+      destinationPrecision: this.destinationPrecision || alternateRoute.destinationPrecision,
+      destinationScale: this.destinationScale || alternateRoute.destinationScale
     })
   }
 
@@ -74,7 +89,9 @@ class Route {
       isLocal: this.isLocal && tailRoute.isLocal,
       sourceAccount: this.sourceAccount,
       expiresAt: Date.now() + expiryDuration,
-      targetPrefix: tailRoute.targetPrefix
+      targetPrefix: tailRoute.targetPrefix,
+      destinationPrecision: tailRoute.destinationPrecision,
+      destinationScale: tailRoute.destinationScale
     })
   }
 
@@ -95,7 +112,9 @@ class Route {
       minMessageWindow: this.minMessageWindow,
       additionalInfo: this.additionalInfo,
       isLocal: this.isLocal,
-      targetPrefix: this.targetPrefix
+      targetPrefix: this.targetPrefix,
+      destinationPrecision: this.destinationPrecision,
+      destinationScale: this.destinationScale
     })
   }
 
@@ -110,13 +129,15 @@ class Route {
    * @returns {Object}
    */
   toJSON () {
-    return {
+    return omitUndefined({
       source_ledger: this.sourceLedger,
       destination_ledger: this.destinationLedger,
       points: this.getPoints(),
       min_message_window: this.minMessageWindow,
-      source_account: this.sourceAccount
-    }
+      source_account: this.sourceAccount,
+      destination_precision: this.destinationPrecision,
+      destination_scale: this.destinationScale
+    })
   }
 
   _simpleHops () {
@@ -141,7 +162,9 @@ function dataToRoute (data) {
     sourceAccount: data.source_account,
     destinationAccount: data.destination_account,
     additionalInfo: data.additional_info,
-    targetPrefix: data.target_prefix
+    targetPrefix: data.target_prefix,
+    destinationPrecision: data.destination_precision,
+    destinationScale: data.destination_scale
   })
 }
 

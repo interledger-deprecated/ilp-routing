@@ -1,6 +1,8 @@
 'use strict'
 
 const debug = require('debug')('ilp-routing:routing-tables')
+const isUndefined = require('lodash/fp/isUndefined')
+const omitUndefined = require('lodash/fp/omitBy')(isUndefined)
 
 const PrefixMap = require('./prefix-map')
 const Route = require('./route')
@@ -178,7 +180,7 @@ class RoutingTables {
     const nextLedger = nextHop.bestRoute.nextLedger
     const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
     const isFinal = nextLedger === finalLedger
-    return {
+    return omitUndefined({
       isFinal: isFinal,
       isLocal: nextHop.bestRoute.isLocal,
       sourceLedger: sourceLedger,
@@ -188,9 +190,11 @@ class RoutingTables {
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: finalAmount,
+      finalPrecision: nextHop.bestRoute.destinationPrecision,
+      finalScale: nextHop.bestRoute.destinationScale,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
-    }
+    })
   }
 
   /**
@@ -207,7 +211,7 @@ class RoutingTables {
     const nextLedger = nextHop.bestRoute.nextLedger
     const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
     const isFinal = nextLedger === finalLedger
-    return {
+    return omitUndefined({
       isFinal: isFinal,
       isLocal: nextHop.bestRoute.isLocal,
       sourceLedger: sourceLedger,
@@ -217,9 +221,11 @@ class RoutingTables {
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: nextHop.bestValue.toString(),
+      finalPrecision: nextHop.bestRoute.destinationPrecision,
+      finalScale: nextHop.bestRoute.destinationScale,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
-    }
+    })
   }
 
   _findBestHopForSourceAmount (source, destination, amount) {

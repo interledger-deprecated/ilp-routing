@@ -341,7 +341,9 @@ describe('RoutingTables', function () {
         destination_ledger: ledgerC,
         source_account: ledgerB + 'martin',
         min_message_window: 2, // this min_message_window is higher, so it is used
-        points: [ [0, 0], [100, 100] ]
+        points: [ [0, 0], [100, 100] ],
+        destination_precision: 10,
+        destination_scale: 2
       })
 
       assert.deepStrictEqual(this.tables.toJSON(10), [
@@ -361,14 +363,17 @@ describe('RoutingTables', function () {
             [100, 60], /* .. mary (max) .. */
             [120, 60], /* .. mark .. */
             [200, 100] /* .. mark (max) */
-          ]
+          ],
+          destination_precision: 10,
+          destination_scale: 2
         }, {
           source_ledger: ledgerA,
           destination_ledger: ledgerB,
           min_message_window: 1,
           source_account: markA,
           points: [ [0, 0], [200, 100] ]
-        }])
+        }
+      ])
     })
 
     ;[
@@ -456,8 +461,7 @@ describe('RoutingTables', function () {
           destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
-          minMessageWindow: 2,
-          additionalInfo: undefined
+          minMessageWindow: 2
         })
     })
 
@@ -499,8 +503,7 @@ describe('RoutingTables', function () {
           destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
-          minMessageWindow: 2,
-          additionalInfo: undefined
+          minMessageWindow: 2
         })
     })
   })
