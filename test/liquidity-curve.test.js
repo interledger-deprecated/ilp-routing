@@ -27,6 +27,13 @@ describe('LiquidityCurve', function () {
       }, /InvalidLiquidityCurveError: Curve has point with negative x-coordinate/)
     })
 
+    it('throws InvalidLiquidityCurveError if a point has a negative y-coordinate', function () {
+      const curve = new LiquidityCurve([])
+      assert.throws(() => {
+        curve.setPoints([ [1, -5], [2, 5] ])
+      }, /InvalidLiquidityCurveError: Curve has point with negative y-coordinate/)
+    })
+
     it('throws InvalidLiquidityCurveError if the x-coordinates are not strictly increasing', function () {
       const curve = new LiquidityCurve([])
       assert.throws(() => {
@@ -73,10 +80,6 @@ describe('LiquidityCurve', function () {
     it('returns an exact "y" value when possible', function () {
       const curve = new LiquidityCurve([[0, 0], [50, 100], [100, 1000]])
       assert.equal(curve.amountAt(50), 100)
-    })
-
-    it('returns negative values', function () {
-      assert.equal(curve.shiftY(-40).amountAt(10), -20)
     })
   })
 
@@ -138,7 +141,7 @@ describe('LiquidityCurve', function () {
       const joinedCurve = curve1.join(curve2)
 
       assert.deepStrictEqual(joinedCurve.points,
-        [ [0, 0], [100, 60], [200, 60] ])
+        [ [0, 0], [100, 60] ])
       assert.equal(joinedCurve.amountAt(50), 30)
       assert.equal(joinedCurve.amountAt(100), 60)
       assert.equal(joinedCurve.amountAt(200), 60)
@@ -152,12 +155,32 @@ describe('LiquidityCurve', function () {
         [ [0, 0], [50, 150] ])
     })
 
-    it('handles negative y-coordinates', function () {
-      const curve1 = new LiquidityCurve([ [0, -1], [10, 1] ])
-      const curve2 = new LiquidityCurve([ [0, -1], [1, 2] ])
+    it('handles joining with a right-shifted curve', function () {
+      const curve1 = new LiquidityCurve([ [0, 0], [10, 10] ])
+      const curve2 = new LiquidityCurve([ [1, 1], [11, 11] ])
       const joinedCurve = curve1.join(curve2)
       assert.deepEqual(joinedCurve.points,
-        [ [0, -1], [5, -1], [10, 2] ])
+        [ [1, 1], [10, 10] ])
+    })
+  })
+
+  describe('shiftX', function () {
+    it('shifts all of the points\' Xs by the specified amount', function () {
+      const curve = new LiquidityCurve([ [0, 0], [50, 60], [100, 100] ])
+      assert.deepStrictEqual(curve.shiftX(1).points,
+        [ [1, 0], [51, 60], [101, 100] ])
+    })
+
+    it('stays positive', function () {
+      const curve = new LiquidityCurve([ [0, 0], [10, 10] ])
+      assert.deepStrictEqual(curve.shiftX(-5).points,
+        [ [0, 5], [5, 10] ])
+    })
+
+    it('shifts a single point and stays positive', function () {
+      const curve = new LiquidityCurve([ [5, 5] ])
+      assert.deepStrictEqual(curve.shiftX(-10).points,
+        [ [0, 5] ])
     })
   })
 
@@ -166,6 +189,12 @@ describe('LiquidityCurve', function () {
       const curve = new LiquidityCurve([ [0, 0], [50, 60], [100, 100] ])
       assert.deepStrictEqual(curve.shiftY(1).points,
         [ [0, 1], [50, 61], [100, 101] ])
+    })
+
+    it('stays positive', function () {
+      const curve = new LiquidityCurve([ [0, 0], [10, 10] ])
+      assert.deepStrictEqual(curve.shiftY(-5).points,
+        [ [5, 0], [10, 5] ])
     })
   })
 })

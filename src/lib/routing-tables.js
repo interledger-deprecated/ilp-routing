@@ -193,6 +193,7 @@ class RoutingTables {
       finalPrecision: nextHop.bestRoute.destinationPrecision,
       finalScale: nextHop.bestRoute.destinationScale,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
+      liquidityCurve: nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     })
   }
@@ -224,6 +225,7 @@ class RoutingTables {
       finalPrecision: nextHop.bestRoute.destinationPrecision,
       finalScale: nextHop.bestRoute.destinationScale,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
+      liquidityCurve: nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     })
   }

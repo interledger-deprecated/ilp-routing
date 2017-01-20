@@ -13,6 +13,7 @@ class LiquidityCurve {
     for (let i = 0; i < this.points.length; i++) {
       let point = this.points[i]
       if (point[0] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative x-coordinate')
+      if (point[1] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative y-coordinate')
       if (prev && point[0] <= prev[0]) {
         throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series')
       }
@@ -27,13 +28,8 @@ class LiquidityCurve {
     return this.points
   }
 
-  /**
-   * Note: LiquidityCurve#amountAt can return negative values, whereas Route#amountAt
-   * will only return >=0. This is because LiquidityCurve#amountAt is used in `join()`,
-   * while Route#amountAt is used externally.
-   */
   amountAt (x) {
-    if (x < this.points[0][0]) return Math.min(0, this.points[0][1])
+    if (x < this.points[0][0]) return 0
     if (x === this.points[0][0]) return this.points[0][1]
     const lastPoint = this.points[this.points.length - 1]
     if (lastPoint[0] <= x) return lastPoint[1]
@@ -71,6 +67,13 @@ class LiquidityCurve {
     return new LiquidityCurve(simplify(this.points, maxPoints))
   }
 
+  /**
+   * Combine two parallel routes, generating a new curve consisting of the best
+   * segments of each.
+   *
+   * @param {LiquidityCurve} curve
+   * @returns {LiquidityCurve}
+   */
   combine (curve) {
     return new LiquidityCurve(
       this._mapToMax(curve.points)
@@ -144,10 +147,24 @@ class LiquidityCurve {
     }
   }
 
+  /**
+   * Compose two routes end-to-end: A→B.join(B→C) becomes A→C.
+   * @param {LiquidityCurve} curve
+   * @returns {LiquidityCurve}
+   */
   join (curve) {
+    const leftPoints = []
+    const minX = curve.points[0][0]
+    const maxX = curve.points[curve.points.length - 1][0]
+    this.points.forEach((p) => {
+      // If `p.y` is not within `curve`'s domain, don't use it to form the new curve.
+      if (minX <= p[1] && p[1] <= maxX) {
+        leftPoints.push([ p[0], curve.amountAt(p[1]) ])
+      }
+    })
+
     return new LiquidityCurve(
-      this.points
-        .map((p) => [ p[0], curve.amountAt(p[1]) ])
+      leftPoints
         .concat(curve.points
           .map((p) => [ this.amountReverse(p[0]), p[1] ])
         )
@@ -157,8 +174,32 @@ class LiquidityCurve {
     )
   }
 
+  shiftX (dx) {
+    let shiftedPoints = this.points.map((p) => [ p[0] + dx, p[1] ])
+    if (dx >= 0) return new LiquidityCurve(shiftedPoints)
+
+    for (let i = shiftedPoints.length - 1; i >= 0; i--) {
+      if (shiftedPoints[i][0] < 0) {
+        shiftedPoints = shiftedPoints.slice(i + 1)
+        shiftedPoints.unshift([0, this.amountAt(-dx)])
+        break
+      }
+    }
+    return new LiquidityCurve(shiftedPoints)
+  }
+
   shiftY (dy) {
-    return new LiquidityCurve(this.points.map((p) => [ p[0], p[1] + dy ]))
+    let shiftedPoints = this.points.map((p) => [ p[0], p[1] + dy ])
+    if (dy >= 0) return new LiquidityCurve(shiftedPoints)
+
+    for (let i = shiftedPoints.length - 1; i >= 0; i--) {
+      if (shiftedPoints[i][1] < 0) {
+        shiftedPoints = shiftedPoints.slice(i + 1)
+        shiftedPoints.unshift([this.amountReverse(-dy), 0])
+        break
+      }
+    }
+    return new LiquidityCurve(shiftedPoints)
   }
 }
 

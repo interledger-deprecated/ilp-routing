@@ -22,11 +22,15 @@ Given a destination amount, look up the corresponding source amount.
 
 #### `route.combine(alternateRoute) ⇒ Route`
 
-Combine two parallel routes.
+Combine two parallel routes, generating a new curve consisting of the best segments of each.
 
 #### `route.join(tailRoute) ⇒ Route`
 
-Join two routes end-to-end.
+Compose two routes end-to-end: `A→B.join(B→C)` becomes `A→C`.
+
+#### `route.shiftX(dx) ⇒ Route`
+
+Shift a route's curve left or right.
 
 #### `route.shiftY(dy) ⇒ Route`
 
