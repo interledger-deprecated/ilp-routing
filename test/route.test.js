@@ -141,7 +141,7 @@ describe('Route', function () {
 
       // It joins the curves
       assert.deepEqual(joinedRoute.getPoints(),
-        [ [0, 0], [100, 60], [200, 60] ])
+        [ [0, 0], [100, 60] ])
       // It concatenates the hops
       assert.deepEqual(joinedRoute.hops, [ledgerA, ledgerB, ledgerC, ledgerD])
       // It isn't a local pair.

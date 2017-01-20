@@ -49,7 +49,7 @@ class Route {
   }
 
   // Proxy some functions to the LiquidityCurve.
-  amountAt (x) { return Math.max(0, this.curve.amountAt(x)) }
+  amountAt (x) { return this.curve.amountAt(x) }
   amountReverse (y) { return this.curve.amountReverse(y) }
   getPoints () { return this.curve.getPoints() }
 
@@ -93,6 +93,14 @@ class Route {
       destinationPrecision: tailRoute.destinationPrecision,
       destinationScale: tailRoute.destinationScale
     })
+  }
+
+  /**
+   * @param {Number} dx
+   * @returns {Route}
+   */
+  shiftX (dx) {
+    return new Route(this.curve.shiftX(dx), this.hops, this)
   }
 
   /**
