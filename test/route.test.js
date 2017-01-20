@@ -205,4 +205,21 @@ describe('Route', function () {
       assert.strictEqual(route2.isExpired(), true)
     })
   })
+
+  describe('bumpExpiration', function () {
+    it('doesn\'t expire routes that have been bumped, but they expire when specified', function () {
+      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {})
+      const route2 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {expiresAt: Date.now() + 1000})
+      assert.strictEqual(route1.isExpired(), false)
+      assert.strictEqual(route2.isExpired(), false)
+
+      route2.bumpExpiration(3000)
+      this.clock.tick(2000)
+      assert.strictEqual(route1.isExpired(), false)
+      assert.strictEqual(route2.isExpired(), false)
+      this.clock.tick(5000)
+      assert.strictEqual(route1.isExpired(), false)
+      assert.strictEqual(route2.isExpired(), true)
+    })
+  })
 })

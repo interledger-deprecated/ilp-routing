@@ -46,6 +46,12 @@ class Route {
     if ((hasPrecision && !hasScale) || (!hasPrecision && hasScale)) {
       throw new Error('Missing destinationPrecision or destinationScale')
     }
+
+    // this test served its primary purpose of alerting me to creation of routes without epochs; requiring it means adding a lot of boilerplate to the tests, so my inclination is to remove the test
+    // if (info.addedDuringEpoch === undefined) {
+    //    throw new Error("must supply info.addedDuringEpoch")
+    // }
+    this.addedDuringEpoch = info.addedDuringEpoch
   }
 
   // Proxy some functions to the LiquidityCurve.
@@ -63,9 +69,14 @@ class Route {
     return new Route(combinedCurve, combinedHops, {
       minMessageWindow: Math.max(this.minMessageWindow, alternateRoute.minMessageWindow),
       isLocal: false,
+
       // If either route knows the destination precision/scale, use it.
       destinationPrecision: this.destinationPrecision || alternateRoute.destinationPrecision,
-      destinationScale: this.destinationScale || alternateRoute.destinationScale
+      destinationScale: this.destinationScale || alternateRoute.destinationScale,
+
+      // todo? should this be min? not sure of the full semantics of this at the moment
+      addedDuringEpoch: Math.max(alternateRoute.addedDuringEpoch, this.addedDuringEpoch)
+
     })
   }
 
@@ -74,24 +85,26 @@ class Route {
    * @param {Integer} expiryDuration milliseconds
    * @returns {Route}
    */
-  join (tailRoute, expiryDuration) {
+  join (tailRoute, expiryDuration, addedDuringEpoch) {
     // Sanity check: make sure the routes are actually adjacent.
     if (this.destinationLedger !== tailRoute.sourceLedger) return
-
     // Don't create A→B→A.
     // In addition, ensure that it doesn't double back, i.e. B→A→B→C.
     if (intersect(this.hops, tailRoute.hops) > 1) return
-
     const joinedCurve = this.curve.join(tailRoute.curve)
     const joinedHops = this.hops.concat(tailRoute.hops.slice(1))
+
     return new Route(joinedCurve, joinedHops, {
       minMessageWindow: this.minMessageWindow + tailRoute.minMessageWindow,
       isLocal: this.isLocal && tailRoute.isLocal,
       sourceAccount: this.sourceAccount,
       expiresAt: Date.now() + expiryDuration,
       targetPrefix: tailRoute.targetPrefix,
+
       destinationPrecision: tailRoute.destinationPrecision,
-      destinationScale: tailRoute.destinationScale
+      destinationScale: tailRoute.destinationScale,
+
+      addedDuringEpoch: addedDuringEpoch
     })
   }
 
@@ -115,14 +128,17 @@ class Route {
    * @param {Integer} maxPoints
    * @returns {Route}
    */
-  simplify (maxPoints) {
+  simplify (maxPoints, addedDuringEpoch) {
     return new Route(this.curve.simplify(maxPoints), this._simpleHops(), {
       minMessageWindow: this.minMessageWindow,
       additionalInfo: this.additionalInfo,
       isLocal: this.isLocal,
       targetPrefix: this.targetPrefix,
+
       destinationPrecision: this.destinationPrecision,
-      destinationScale: this.destinationScale
+      destinationScale: this.destinationScale,
+
+      addedDuringEpoch: addedDuringEpoch
     })
   }
 
@@ -131,6 +147,15 @@ class Route {
    */
   isExpired () {
     return !!this.expiresAt && this.expiresAt < Date.now()
+  }
+
+  /**
+   * @param {Integer} holdDown milliseconds
+   * @returns {Integer} milliseconds
+   */
+  bumpExpiration (holdDown) {
+    this.expiresAt = Date.now() + holdDown
+    return this.expiresAt
   }
 
   /**
@@ -143,9 +168,19 @@ class Route {
       points: this.getPoints(),
       min_message_window: this.minMessageWindow,
       source_account: this.sourceAccount,
+
       destination_precision: this.destinationPrecision,
-      destination_scale: this.destinationScale
+      destination_scale: this.destinationScale,
+
+      added_during_epoch: this.addedDuringEpoch
     })
+  }
+
+  toDebugString (nextConnector) {
+    return this.sourceLedger.substring(11) + '-' +
+      this.nextLedger.substring(11) + '->' +
+      this.destinationLedger.substring(11) + '~' +
+      nextConnector
   }
 
   _simpleHops () {
@@ -159,8 +194,16 @@ Route.fromData = dataToRoute
  * @param {Object|Route} data
  * @returns {Route}
  */
-function dataToRoute (data) {
-  if (data instanceof Route) return data
+function dataToRoute (data, currentEpoch) {
+  if (data instanceof Route) {
+    if (data.addedDuringEpoch === undefined) {
+      data.addedDuringEpoch = -1
+      // too much of a pain with tests:
+      // throw new Error('route somehow created without addedDuringEpoch')
+    }
+    return data
+  }
+  if (currentEpoch === undefined) throw new Error('must supply currentEpoch as second arg')
   return new Route(data.points, [
     data.source_ledger,
     data.destination_ledger
@@ -171,8 +214,11 @@ function dataToRoute (data) {
     destinationAccount: data.destination_account,
     additionalInfo: data.additional_info,
     targetPrefix: data.target_prefix,
+
     destinationPrecision: data.destination_precision,
-    destinationScale: data.destination_scale
+    destinationScale: data.destination_scale,
+
+    addedDuringEpoch: currentEpoch
   })
 }
 

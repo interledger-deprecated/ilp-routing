@@ -21,11 +21,18 @@ class RoutingTable {
     routes.set(nextHop, route)
   }
 
+  /**
+   * @returns {Boolean} True if connectivity has been lost
+   */
   removeRoute (destination, nextHop) {
     const routes = this.destinations.get(destination)
-    if (!routes) return
+    if (!routes) return false
     routes.delete(nextHop)
-    if (routes.size === 0) this.destinations.delete(destination)
+    if (routes.size === 0) {
+      this.destinations.delete(destination)
+      return true
+    }
+    return false
   }
 
   findBestHopForSourceAmount (destination, sourceAmount) {
