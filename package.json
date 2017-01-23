@@ -1,6 +1,6 @@
 {
   "name": "ilp-routing",
-  "version": "5.4.0",
+  "version": "6.0.0",
   "description": "ILP routing layer utilities",
   "main": "index.js",
   "directories": {
