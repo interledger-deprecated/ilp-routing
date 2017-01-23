@@ -8,6 +8,7 @@ test:
     # Run tests with coverage
     #- npm test --coverage
     - npm test
+    - if git log -1 --pretty=%B | grep -qF "[skip tests]"; then true; else npm run integration; fi
 deployment:
   production:
     branch: master
