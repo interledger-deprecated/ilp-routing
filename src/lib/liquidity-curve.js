@@ -12,13 +12,13 @@ class LiquidityCurve {
     this.points = points.slice()
     for (let i = 0; i < this.points.length; i++) {
       let point = this.points[i]
-      if (point[0] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative x-coordinate')
-      if (point[1] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative y-coordinate')
+      if (point[0] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative x-coordinate', this.points)
+      if (point[1] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative y-coordinate', this.points)
       if (prev && point[0] <= prev[0]) {
-        throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series')
+        throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series', this.points)
       }
       if (prev && point[1] < prev[1]) {
-        throw new InvalidLiquidityCurveError('Curve y-coordinates must increase in series')
+        throw new InvalidLiquidityCurveError('Curve y-coordinates must increase in series', this.points)
       }
       prev = point
     }
@@ -244,7 +244,8 @@ function intersectLineSegments (line0, line1) {
 }
 
 class InvalidLiquidityCurveError extends Error {
-  constructor (message) {
+  constructor (message, points) {
+    message = message + ' points:' + JSON.stringify(points)
     super(message)
     this.name = 'InvalidLiquidityCurveError'
   }

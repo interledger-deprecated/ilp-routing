@@ -272,8 +272,88 @@ describe('RoutingTables', function () {
       assert.equal(this.tables.toJSON(10).length, 3)
 
       this.clock.tick(45001)
-      this.tables.removeExpiredRoutes()
+      let lll = this.tables.removeExpiredRoutes()
+      assert.deepStrictEqual(lll, [ledgerC])
       assert.equal(this.tables.toJSON(10).length, 2)
+    })
+  })
+
+  describe('bumpConnector', function () {
+    it('resets expiration to a time in the future', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      })
+      assert.equal(this.tables.toJSON(10).length, 3)
+      // assume removeExpiredRoutes is working
+      this.clock.tick(45001)
+      this.tables.bumpConnector(ledgerB + 'mary', 12345)
+      this.tables.removeExpiredRoutes()
+      assert.equal(this.tables.toJSON(10).length, 3)
+    })
+  })
+
+  describe('invalidateConnector', function () {
+    it('removes routes with a nextHop depending on a given connector', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      })
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'martin',
+        min_message_window: 1,
+        points: [ [0, 0], [100, 100] ]
+      })
+      assertSubset(
+        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        { bestHop: ledgerB + 'mary', bestValue: 60 })
+      this.tables.invalidateConnector(ledgerB + 'mary')
+      assertSubset(
+        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        { bestHop: ledgerB + 'martin' })
+      let lll = this.tables.invalidateConnector(ledgerB + 'martin')
+      assert.deepStrictEqual(lll, [ledgerC])
+    })
+  })
+
+  describe('invalidateConnectorsRoutesTo', function () {
+    it('removes routes to a specific ledger, with a nextHop depending on a given connector', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      })
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerD,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      })
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'martin',
+        min_message_window: 1,
+        points: [ [0, 0], [100, 100] ]
+      })
+      assertSubset(
+        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        { bestHop: ledgerB + 'mary', bestValue: 60 })
+      this.tables.invalidateConnectorsRoutesTo(ledgerB + 'mary', ledgerD)
+      assertSubset(
+        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        { bestHop: ledgerB + 'mary', bestValue: 60 })
     })
   })
 
@@ -352,7 +432,8 @@ describe('RoutingTables', function () {
           destination_ledger: ledgerA,
           min_message_window: 1,
           source_account: markB,
-          points: [ [0, 0], [100, 200] ]
+          points: [ [0, 0], [100, 200] ],
+          added_during_epoch: 0
         }, {
           source_ledger: ledgerA,
           destination_ledger: ledgerC,
@@ -365,13 +446,15 @@ describe('RoutingTables', function () {
             [200, 100] /* .. mark (max) */
           ],
           destination_precision: 10,
-          destination_scale: 2
+          destination_scale: 2,
+          added_during_epoch: 0
         }, {
           source_ledger: ledgerA,
           destination_ledger: ledgerB,
           min_message_window: 1,
           source_account: markA,
-          points: [ [0, 0], [200, 100] ]
+          points: [ [0, 0], [200, 100] ],
+          added_during_epoch: 0
         }
       ])
     })
@@ -422,7 +505,8 @@ describe('RoutingTables', function () {
           destination_ledger: ledgerC,
           min_message_window: 2,
           source_account: markA,
-          points: test.output
+          points: test.output,
+          added_during_epoch: 0
         })
       })
     }, this)

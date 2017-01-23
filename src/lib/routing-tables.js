@@ -17,10 +17,16 @@ class RoutingTables {
    * @param {Integer} expiryDuration milliseconds
    */
   constructor (localRoutes, expiryDuration) {
+    this.currentEpoch = 0
+    // todo: remove the expiry logic from here (hold-down should be set by the originator of the route) ; for now, I'm just assuming an acceptable initial expiry, and bumping it when heartbeats are received
     this.expiryDuration = expiryDuration
     this.sources = new PrefixMap() // { "sourceLedger" => RoutingTable }
     this.localAccounts = {} // { "ledger" ⇒ accountURI }
     this.addLocalRoutes(localRoutes)
+  }
+
+  incrementEpoch () {
+    this.currentEpoch++
   }
 
   /**
@@ -28,7 +34,7 @@ class RoutingTables {
    *   `destinationAccount` parameter.
    */
   addLocalRoutes (_localRoutes) {
-    const localRoutes = _localRoutes.map(Route.fromData)
+    const localRoutes = _localRoutes.map((route) => Route.fromData(route, this.currentEpoch))
     for (const localRoute of localRoutes) {
       localRoute.isLocal = true
       const table = this.sources.get(localRoute.sourceLedger) ||
@@ -44,6 +50,7 @@ class RoutingTables {
   }
 
   removeLedger (ledger) {
+    debug('removeLedger ledger:', ledger)
     const removeList = []
     this.eachRoute((routeFromAToB, ledgerA, ledgerB, nextHop) => {
       if (ledgerA === ledger || ledgerB === ledger) {
@@ -63,12 +70,14 @@ class RoutingTables {
    * @returns {Boolean} whether or not a new route was added
    */
   addRoute (_route) {
-    const route = Route.fromData(_route)
+    const route = Route.fromData(_route, this.currentEpoch)
     let added = false
     this.eachSource((tableFromA, ledgerA) => {
       added = this._addRouteFromSource(tableFromA, ledgerA, route) || added
     })
-    if (added) debug('add route matching', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
+    if (added) {
+      debug('add route matching', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
+    }
     return added
   }
 
@@ -79,14 +88,20 @@ class RoutingTables {
     let added = false
 
     // Don't create local route A→B→C if local route A→C already exists.
-    if (routeFromBToC.isLocal && this._getLocalPairRoute(ledgerA, ledgerC)) return
+    if (routeFromBToC.isLocal && this._getLocalPairRoute(ledgerA, ledgerC)) {
+      return
+    }
     // Don't create A→B→C when A→B is not a local pair.
     const routeFromAToB = this._getLocalPairRoute(ledgerA, ledgerB)
-    if (!routeFromAToB) return
+    if (!routeFromAToB) {
+      return
+    }
 
     // Make sure the routes can be joined.
-    const routeFromAToC = routeFromAToB.join(routeFromBToC, this.expiryDuration)
-    if (!routeFromAToC) return
+    const routeFromAToC = routeFromAToB.join(routeFromBToC, this.expiryDuration, this.currentEpoch)
+    if (!routeFromAToC) {
+      return
+    }
 
     if (!this._getRoute(ledgerA, ledgerC, connectorFromBToC)) added = true
     tableFromA.addRoute(ledgerC, connectorFromBToC, routeFromAToC)
@@ -97,18 +112,59 @@ class RoutingTables {
   }
 
   _removeRoute (ledgerB, ledgerC, connectorFromBToC) {
+    let lostLedgerLinks = []
     this.eachSource((tableFromA, ledgerA) => {
       if (ledgerA !== ledgerB) return
-      tableFromA.removeRoute(ledgerC, connectorFromBToC)
+      if (tableFromA.removeRoute(ledgerC, connectorFromBToC)) {
+        lostLedgerLinks.push(ledgerC)
+      }
     })
+    return lostLedgerLinks
   }
 
   removeExpiredRoutes () {
+    let lostLedgerLinks = []
     this.eachRoute((routeFromAToB, ledgerA, ledgerB, nextHop) => {
       if (routeFromAToB.isExpired()) {
-        this._removeRoute(ledgerA, ledgerB, nextHop)
+        debug('removing expired route ledgerA:', ledgerA, ' ledgerB:', ledgerB, ' nextHop:', nextHop)
+        let lll = this._removeRoute(ledgerA, ledgerB, nextHop)
+        lostLedgerLinks.push(...lll)
       }
     })
+    return lostLedgerLinks
+  }
+
+  bumpConnector (connectorAccount, holdDownTime) {
+    this.eachRoute((route, ledgerA, ledgerB, nextHop) => {
+      if (connectorAccount === nextHop) {
+        debug('bumping route ledgerA:', ledgerA, ' ledgerB:', ledgerB, ' nextHop:', nextHop)
+        route.bumpExpiration(holdDownTime)
+      }
+    })
+  }
+
+  invalidateConnector (connectorAccount) {
+    debug('invalidateConnector connectorAccount:', connectorAccount)
+    let lostLedgerLinks = []
+    this.eachSource((table, sourceLedger) => {
+      table.destinations.each((_routes, destination) => {
+        if (table.removeRoute(destination, connectorAccount)) {
+          lostLedgerLinks.push(destination)
+        }
+      })
+    })
+    return lostLedgerLinks
+  }
+
+  invalidateConnectorsRoutesTo (connectorAccount, ledger) {
+    debug('invalidateConnectorsRoutesTo connectorAccount:', connectorAccount, ' ledger:', ledger)
+    let lostLedgerLinks = []
+    this.eachSource((table, sourceLedger) => {
+      if (table.removeRoute(ledger, connectorAccount)) {
+        lostLedgerLinks.push(ledger)
+      }
+    })
+    return lostLedgerLinks
   }
 
   /**
@@ -141,10 +197,22 @@ class RoutingTables {
     const routes = []
     this.eachSource((table, sourceLedger) => {
       table.destinations.each((routesByConnector, destinationLedger) => {
-        const combinedRoute = combineRoutesByConnector(routesByConnector, maxPoints)
+        const combinedRoute = combineRoutesByConnector(routesByConnector, maxPoints, this.currentEpoch)
         const combinedRouteData = combinedRoute.toJSON()
         combinedRouteData.source_account = this.localAccounts[combinedRoute.sourceLedger]
         routes.push(combinedRouteData)
+      })
+    })
+    return routes
+  }
+
+  toDebugStrings () {
+    const routes = []
+    this.eachSource((table, sourceLedger) => {
+      table.destinations.each((routesByConnector, destinationLedger) => {
+        routesByConnector.forEach((route, connector) => {
+          routes.push(route.toDebugString(connector))
+        })
       })
     })
     return routes
@@ -262,13 +330,13 @@ class RoutingTables {
   }
 }
 
-function combineRoutesByConnector (routesByConnector, maxPoints) {
+function combineRoutesByConnector (routesByConnector, maxPoints, epoch) {
   const routes = routesByConnector.values()
   let totalRoute = routes.next().value
   for (const subRoute of routes) {
     totalRoute = totalRoute.combine(subRoute)
   }
-  return totalRoute.simplify(maxPoints)
+  return totalRoute.simplify(maxPoints, epoch)
 }
 
 module.exports = RoutingTables

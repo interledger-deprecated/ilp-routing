@@ -22,6 +22,7 @@ class PrefixMap {
   }
 
   keys () { return this.prefixes }
+
   size () { return this.prefixes.length }
 
   resolve (key) {
