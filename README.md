@@ -2,6 +2,15 @@
 
 > ILP routing table implementation
 
+[![npm][npm-image]][npm-url] [![circle][circle-image]][circle-url] [![codecov][codecov-image]][codecov-url]
+
+[npm-image]: https://img.shields.io/npm/v/ilp-routing.svg?style=flat
+[npm-url]: https://npmjs.org/package/ilp-routing
+[circle-image]: https://circleci.com/gh/interledgerjs/ilp-routing.svg?style=shield
+[circle-url]: https://circleci.com/gh/interledgerjs/ilp-routing
+[codecov-image]: https://codecov.io/gh/interledgerjs/ilp-routing/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/interledgerjs/ilp-routing
+
 ## API Reference
 
 ### Route
