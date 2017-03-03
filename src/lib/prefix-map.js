@@ -64,6 +64,10 @@ class PrefixMap {
     if (this.prefixes[index] === prefix) this.prefixes.splice(index, 1)
     delete this.items[prefix]
   }
+
+  toJSON () {
+    return this.items
+  }
 }
 
 module.exports = PrefixMap

@@ -76,8 +76,11 @@ class RoutingTables {
       added = this._addRouteFromSource(tableFromA, ledgerA, route) || added
     })
     if (added) {
-      debug('add route matching', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
+      debug('added route matching ', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
+    } else {
+      debug('could not add route: ', route)
     }
+
     return added
   }
 

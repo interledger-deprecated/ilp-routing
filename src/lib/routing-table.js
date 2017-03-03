@@ -55,6 +55,12 @@ class RoutingTable {
       }
     })
 
+    if (bestHop) {
+      debug('findBestHopForSourceAmount to ' + destination + ' for ' + sourceAmount + ' found route through ' + bestHop)
+    } else {
+      debug('findBestHopForSourceAmount could not find route to ' + destination + ' for ' + sourceAmount + '. Current routing table: ' + JSON.stringify(this.destinations.toJSON()))
+    }
+
     return { bestHop, bestValue, bestRoute }
   }
 
@@ -78,8 +84,13 @@ class RoutingTable {
       }
     })
 
-    if (!bestHop) return undefined
-    return { bestHop, bestCost, bestRoute }
+    if (bestHop) {
+      debug('findBestHopForDestinationAmount to ' + destination + ' for ' + destinationAmount + ' found route through ' + bestHop)
+      return { bestHop, bestCost, bestRoute }
+    } else {
+      debug('findBestHopForDestinationAmount could not find route to ' + destination + ' for ' + destinationAmount + '. Current routing table: ' + JSON.stringify(this.destinations.toJSON()))
+      return undefined
+    }
   }
 }
 
