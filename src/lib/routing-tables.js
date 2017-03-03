@@ -77,8 +77,6 @@ class RoutingTables {
     })
     if (added) {
       debug('added route matching ', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
-    } else {
-      debug('could not add route: ', route)
     }
 
     return added
