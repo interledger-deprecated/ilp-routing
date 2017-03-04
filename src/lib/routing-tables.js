@@ -76,7 +76,8 @@ class RoutingTables {
       added = this._addRouteFromSource(tableFromA, ledgerA, route) || added
     })
     if (added) {
-      debug('added route matching ', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
+      debug('added route matching ', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger, 'epoch:', route.addedDuringEpoch)
+      this.incrementEpoch()
     }
 
     return added
@@ -104,7 +105,10 @@ class RoutingTables {
       return
     }
 
-    if (!this._getRoute(ledgerA, ledgerC, connectorFromBToC)) added = true
+    if (!this._getRoute(ledgerA, ledgerC, connectorFromBToC)) {
+      added = true
+      routeFromAToC.addedDuringEpoch++
+    }
     tableFromA.addRoute(ledgerC, connectorFromBToC, routeFromAToC)
 
     // Given pairs A↔B,B→C; on addRoute(C→D) create A→D after creating B→D.
@@ -198,7 +202,7 @@ class RoutingTables {
     const routes = []
     this.eachSource((table, sourceLedger) => {
       table.destinations.each((routesByConnector, destinationLedger) => {
-        const combinedRoute = combineRoutesByConnector(routesByConnector, maxPoints, this.currentEpoch)
+        const combinedRoute = combineRoutesByConnector(routesByConnector, maxPoints)
         const combinedRouteData = combinedRoute.toJSON()
         combinedRouteData.source_account = this.localAccounts[combinedRoute.sourceLedger]
         routes.push(combinedRouteData)
@@ -327,13 +331,13 @@ class RoutingTables {
   }
 }
 
-function combineRoutesByConnector (routesByConnector, maxPoints, epoch) {
+function combineRoutesByConnector (routesByConnector, maxPoints) {
   const routes = routesByConnector.values()
   let totalRoute = routes.next().value
   for (const subRoute of routes) {
     totalRoute = totalRoute.combine(subRoute)
   }
-  return totalRoute.simplify(maxPoints, epoch)
+  return totalRoute.simplify(maxPoints)
 }
 
 module.exports = RoutingTables
