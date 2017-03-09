@@ -16,8 +16,6 @@ class Route {
    * @param {String} info.destinationAccount
    * @param {Object} info.additionalInfo
    * @param {String} info.targetPrefix
-   * @param {Integer} info.destinationScale
-   * @param {Integer} info.destinationPrecision
    */
   constructor (curve, hops, info) {
     this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
@@ -38,14 +36,6 @@ class Route {
     this.isLocal = info.isLocal
     this.sourceAccount = info.sourceAccount
     this.destinationAccount = info.destinationAccount
-    this.destinationPrecision = info.destinationPrecision
-    this.destinationScale = info.destinationScale
-
-    const hasPrecision = typeof this.destinationPrecision === 'number'
-    const hasScale = typeof this.destinationScale === 'number'
-    if ((hasPrecision && !hasScale) || (!hasPrecision && hasScale)) {
-      throw new Error('Missing destinationPrecision or destinationScale')
-    }
 
     // this test served its primary purpose of alerting me to creation of routes without epochs; requiring it means adding a lot of boilerplate to the tests, so my inclination is to remove the test
     // if (info.addedDuringEpoch === undefined) {
@@ -69,11 +59,6 @@ class Route {
     return new Route(combinedCurve, combinedHops, {
       minMessageWindow: Math.max(this.minMessageWindow, alternateRoute.minMessageWindow),
       isLocal: false,
-
-      // If either route knows the destination precision/scale, use it.
-      destinationPrecision: this.destinationPrecision || alternateRoute.destinationPrecision,
-      destinationScale: this.destinationScale || alternateRoute.destinationScale,
-
       // todo? should this be min? not sure of the full semantics of this at the moment
       addedDuringEpoch: Math.max(alternateRoute.addedDuringEpoch, this.addedDuringEpoch)
 
@@ -100,10 +85,6 @@ class Route {
       sourceAccount: this.sourceAccount,
       expiresAt: Date.now() + expiryDuration,
       targetPrefix: tailRoute.targetPrefix,
-
-      destinationPrecision: tailRoute.destinationPrecision,
-      destinationScale: tailRoute.destinationScale,
-
       addedDuringEpoch: addedDuringEpoch
     })
   }
@@ -134,10 +115,6 @@ class Route {
       additionalInfo: this.additionalInfo,
       isLocal: this.isLocal,
       targetPrefix: this.targetPrefix,
-
-      destinationPrecision: this.destinationPrecision,
-      destinationScale: this.destinationScale,
-
       addedDuringEpoch: addedDuringEpoch
     })
   }
@@ -168,10 +145,6 @@ class Route {
       points: this.getPoints(),
       min_message_window: this.minMessageWindow,
       source_account: this.sourceAccount,
-
-      destination_precision: this.destinationPrecision,
-      destination_scale: this.destinationScale,
-
       added_during_epoch: this.addedDuringEpoch
     })
   }
@@ -214,10 +187,6 @@ function dataToRoute (data, currentEpoch) {
     destinationAccount: data.destination_account,
     additionalInfo: data.additional_info,
     targetPrefix: data.target_prefix,
-
-    destinationPrecision: data.destination_precision,
-    destinationScale: data.destination_scale,
-
     addedDuringEpoch: currentEpoch
   })
 }

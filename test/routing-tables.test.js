@@ -421,9 +421,7 @@ describe('RoutingTables', function () {
         destination_ledger: ledgerC,
         source_account: ledgerB + 'martin',
         min_message_window: 2, // this min_message_window is higher, so it is used
-        points: [ [0, 0], [100, 100] ],
-        destination_precision: 10,
-        destination_scale: 2
+        points: [ [0, 0], [100, 100] ]
       })
 
       assert.deepStrictEqual(this.tables.toJSON(10), [
@@ -445,8 +443,6 @@ describe('RoutingTables', function () {
             [120, 60], /* .. mark .. */
             [200, 100] /* .. mark (max) */
           ],
-          destination_precision: 10,
-          destination_scale: 2,
           added_during_epoch: 0
         }, {
           source_ledger: ledgerA,

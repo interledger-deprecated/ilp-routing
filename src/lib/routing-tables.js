@@ -259,8 +259,6 @@ class RoutingTables {
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: finalAmount,
-      finalPrecision: nextHop.bestRoute.destinationPrecision,
-      finalScale: nextHop.bestRoute.destinationScale,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
       liquidityCurve: nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
@@ -291,8 +289,6 @@ class RoutingTables {
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: nextHop.bestValue.toString(),
-      finalPrecision: nextHop.bestRoute.destinationPrecision,
-      finalScale: nextHop.bestRoute.destinationScale,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
       liquidityCurve: nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
