@@ -30,9 +30,7 @@ describe('Route', function () {
         isLocal: true,
         sourceAccount: markA,
         destinationAccount: markC,
-        additionalInfo: {foo: 'bar'},
-        destinationPrecision: 10,
-        destinationScale: 2
+        additionalInfo: {foo: 'bar'}
       })
 
       assert.ok(route.curve instanceof LiquidityCurve)
@@ -48,36 +46,7 @@ describe('Route', function () {
       assert.equal(route.isLocal, true)
       assert.equal(route.sourceAccount, markA)
       assert.equal(route.destinationAccount, markC)
-      assert.equal(route.destinationPrecision, 10)
-      assert.equal(route.destinationScale, 2)
       assert.deepStrictEqual(route.additionalInfo, {foo: 'bar'})
-    })
-
-    it('succeeds if missing both destination{Precision,Scale}', function () {
-      const route = new Route([[0, 0], [100, 200]], hopsABC, {
-        sourceAccount: markA,
-        destinationAccount: markC
-      })
-      assert.equal(route.destinationPrecision, undefined)
-      assert.equal(route.destinationScale, undefined)
-    })
-
-    it('fails if only precision is missing', function () {
-      assert.throws(() =>
-        new Route([[0, 0], [100, 200]], hopsABC, {
-          sourceAccount: markA,
-          destinationAccount: markC,
-          destinationScale: 2
-        }), /Missing destinationPrecision or destinationScale/)
-    })
-
-    it('fails if only scale is missing', function () {
-      assert.throws(() =>
-        new Route([[0, 0], [100, 200]], hopsABC, {
-          sourceAccount: markA,
-          destinationAccount: markC,
-          destinationPrecision: 10
-        }), /Missing destinationPrecision or destinationScale/)
     })
   })
 
@@ -133,9 +102,7 @@ describe('Route', function () {
       })
       const route2 = new Route([ [0, 0], [50, 60] ], hopsBCD, {
         isLocal: false,
-        minMessageWindow: 2,
-        destinationPrecision: 10,
-        destinationScale: 2
+        minMessageWindow: 2
       })
       const joinedRoute = route1.join(route2, 1000)
 
@@ -150,9 +117,6 @@ describe('Route', function () {
       assert.equal(joinedRoute.minMessageWindow, 3)
       // It sets an expiry in the future
       assert.ok(Date.now() < joinedRoute.expiresAt)
-      // It uses the tail route's precision/scale.
-      assert.equal(joinedRoute.destinationPrecision, 10)
-      assert.equal(joinedRoute.destinationScale, 2)
     })
 
     it('sets isLocal to true if both routes are local', function () {
