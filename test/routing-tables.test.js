@@ -443,7 +443,7 @@ describe('RoutingTables', function () {
             [120, 60], /* .. mark .. */
             [200, 100] /* .. mark (max) */
           ],
-          added_during_epoch: 0
+          added_during_epoch: 2
         }, {
           source_ledger: ledgerA,
           destination_ledger: ledgerB,
@@ -502,7 +502,7 @@ describe('RoutingTables', function () {
           min_message_window: 2,
           source_account: markA,
           points: test.output,
-          added_during_epoch: 0
+          added_during_epoch: 2
         })
       })
     }, this)

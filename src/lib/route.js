@@ -59,9 +59,8 @@ class Route {
     return new Route(combinedCurve, combinedHops, {
       minMessageWindow: Math.max(this.minMessageWindow, alternateRoute.minMessageWindow),
       isLocal: false,
-      // todo? should this be min? not sure of the full semantics of this at the moment
-      addedDuringEpoch: Math.max(alternateRoute.addedDuringEpoch, this.addedDuringEpoch)
 
+      addedDuringEpoch: Math.max(alternateRoute.addedDuringEpoch, this.addedDuringEpoch)
     })
   }
 
@@ -109,13 +108,13 @@ class Route {
    * @param {Integer} maxPoints
    * @returns {Route}
    */
-  simplify (maxPoints, addedDuringEpoch) {
+  simplify (maxPoints) {
     return new Route(this.curve.simplify(maxPoints), this._simpleHops(), {
       minMessageWindow: this.minMessageWindow,
       additionalInfo: this.additionalInfo,
       isLocal: this.isLocal,
       targetPrefix: this.targetPrefix,
-      addedDuringEpoch: addedDuringEpoch
+      addedDuringEpoch: this.addedDuringEpoch
     })
   }
 
