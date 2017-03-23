@@ -2,6 +2,7 @@
 
 const assert = require('assert')
 const LiquidityCurve = require('../src/lib/liquidity-curve')
+const Reader = require('oer-utils').Reader
 
 describe('LiquidityCurve', function () {
   describe('constructor', function () {
@@ -280,6 +281,43 @@ describe('LiquidityCurve', function () {
       const curve = new LiquidityCurve([ [0, 0], [10, 10] ])
       assert.deepStrictEqual(curve.shiftY(-5).points,
         [ [5, 0], [10, 5] ])
+    })
+  })
+
+  describe('toBuffer', function () {
+    it('serializes an empty curve', function () {
+      const curve = new LiquidityCurve([])
+      assert.deepEqual(curve.toBuffer(), Buffer.from([]))
+    })
+
+    it('serializes a curve', function () {
+      const curve = new LiquidityCurve([ [0, 0], [10, 20] ])
+      const buffer = curve.toBuffer()
+      const reader = Reader.from(buffer)
+      assert.equal(buffer.length, 32)
+      assert.deepEqual(reader.readUInt64(), [0, 0]) // points[0][0]
+      assert.deepEqual(reader.readUInt64(), [0, 0]) // points[0][1]
+      assert.deepEqual(reader.readUInt64(), [0, 10]) // points[1][0]
+      assert.deepEqual(reader.readUInt64(), [0, 20]) // points[1][1]
+    })
+  })
+
+  describe('fromBuffer', function () {
+    it('deserializes an empty buffer to an empty curve', function () {
+      const curve = LiquidityCurve.fromBuffer(Buffer.from([]))
+      assert.deepEqual(curve.points, [])
+    })
+
+    it('deserializes a curve', function () {
+      const originalCurve = new LiquidityCurve([ [0, 0], [10, 20] ])
+      const curve = LiquidityCurve.fromBuffer(originalCurve.toBuffer())
+      assert.deepEqual(curve.points, [ [0, 0], [10, 20] ])
+    })
+
+    it('throws an error if the buffer is an invalid length', function () {
+      assert.throws(() => {
+        LiquidityCurve.fromBuffer(Buffer.from([0]))
+      }, /Invalid LiquidityCurve buffer/)
     })
   })
 })

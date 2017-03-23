@@ -1,6 +1,8 @@
 'use strict'
 
 const simplify = require('vis-why')
+const Long = require('long')
+const Reader = require('oer-utils').Reader
 
 const MAX_ROUNDING_FACTOR = 1.000001
 
@@ -229,6 +231,38 @@ class LiquidityCurve {
       }
     }
     return new LiquidityCurve(shiftedPoints)
+  }
+
+  toBuffer () {
+    const buffer = Buffer.alloc(this.points.length * 16)
+    let i = 0
+    for (const point of this.points) {
+      const x = Long.fromNumber(point[0])
+      const y = Long.fromNumber(point[1])
+      buffer.writeUInt32BE(x.getHighBitsUnsigned(), i)
+      buffer.writeUInt32BE(x.getLowBitsUnsigned(), i + 4)
+      buffer.writeUInt32BE(y.getHighBitsUnsigned(), i + 8)
+      buffer.writeUInt32BE(y.getLowBitsUnsigned(), i + 12)
+      i += 16
+    }
+    return buffer
+  }
+
+  static fromBuffer (buffer) {
+    const points = []
+    if (buffer.length % 16 !== 0) {
+      throw new Error('Invalid LiquidityCurve buffer')
+    }
+    const reader = Reader.from(buffer)
+    for (let i = 0; i < buffer.length; i += 16) {
+      const x = reader.readUInt64()
+      const y = reader.readUInt64()
+      points.push([
+        new Long(x[1], x[0], true).toNumber(),
+        new Long(y[1], y[0], true).toNumber()
+      ])
+    }
+    return new LiquidityCurve(points)
   }
 }
 
