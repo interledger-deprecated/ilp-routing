@@ -258,14 +258,13 @@ class RoutingTables {
       isFinal: isFinal,
       isLocal: nextHop.bestRoute.isLocal,
       sourceLedger: sourceLedger,
-      sourceAmount: nextHop.bestCost.toString(),
+      sourceAmount: nextHop.bestCost,
       destinationLedger: nextLedger,
       destinationAmount: routeFromAToB.amountAt(nextHop.bestCost).toString(),
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
       finalAmount: finalAmount,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
-      liquidityCurve: nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     })
   }
@@ -293,9 +292,8 @@ class RoutingTables {
       destinationAmount: routeFromAToB.amountAt(+sourceAmount).toString(),
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
-      finalAmount: nextHop.bestValue.toString(),
+      finalAmount: nextHop.bestValue,
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
-      liquidityCurve: nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     })
   }

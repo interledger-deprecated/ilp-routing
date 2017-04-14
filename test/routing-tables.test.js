@@ -2,6 +2,7 @@
 
 const assert = require('assert')
 const RoutingTables = require('../src/lib/routing-tables')
+const LiquidityCurve = require('../src/lib/liquidity-curve')
 const sinon = require('sinon')
 
 const START_DATE = 1434412800000 // June 16, 2015 00:00:00 GMT
@@ -170,10 +171,10 @@ describe('RoutingTables', function () {
       ])
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 100),
-        { bestHop: markB, bestValue: 50 })
+        { bestHop: markB, bestValue: '50' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 200),
-        { bestHop: markB, bestValue: 100 })
+        { bestHop: markB, bestValue: '100' })
     })
   })
 
@@ -181,19 +182,19 @@ describe('RoutingTables', function () {
     it('finds the best next hop when there is one route', function () {
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 0),
-        { bestHop: markB, bestValue: 0 })
+        { bestHop: markB, bestValue: '0' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 100),
-        { bestHop: markB, bestValue: 50 })
+        { bestHop: markB, bestValue: '50' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 200),
-        { bestHop: markB, bestValue: 100 })
+        { bestHop: markB, bestValue: '100' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 300),
-        { bestHop: markB, bestValue: 100 })
+        { bestHop: markB, bestValue: '100' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerB, ledgerA, 100),
-        { bestHop: markA, bestValue: 200 })
+        { bestHop: markA, bestValue: '200' })
     })
 
     it('finds the best next hop when there are multiple hops', function () {
@@ -206,7 +207,7 @@ describe('RoutingTables', function () {
       })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: ledgerB + 'mary', bestValue: 25 })
+        { bestHop: ledgerB + 'mary', bestValue: '25' })
     })
 
     it('finds the best next hop when there are multiple routes', function () {
@@ -226,13 +227,13 @@ describe('RoutingTables', function () {
       })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: ledgerB + 'mary', bestValue: 60 })
+        { bestHop: ledgerB + 'mary', bestValue: '60' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 150),
-        { bestHop: ledgerB + 'martin', bestValue: 75 })
+        { bestHop: ledgerB + 'martin', bestValue: '75' })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 200),
-        { bestHop: ledgerB + 'martin', bestValue: 100 })
+        { bestHop: ledgerB + 'martin', bestValue: '100' })
     })
   })
 
@@ -240,19 +241,19 @@ describe('RoutingTables', function () {
     it('finds the best next hop when there is one route', function () {
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 0),
-        { bestHop: markB, bestCost: 0 })
+        { bestHop: markB, bestCost: '0' })
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 50),
-        { bestHop: markB, bestCost: 100 })
+        { bestHop: markB, bestCost: '100' })
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 100),
-        { bestHop: markB, bestCost: 200 })
+        { bestHop: markB, bestCost: '200' })
       assert.equal(
         this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 150),
         undefined)
       assertSubset(
         this.tables._findBestHopForDestinationAmount(ledgerB, ledgerA, 200),
-        { bestHop: markA, bestCost: 100 })
+        { bestHop: markA, bestCost: '100' })
     })
   })
 
@@ -334,7 +335,7 @@ describe('RoutingTables', function () {
       })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: ledgerB + 'mary', bestValue: 60 })
+        { bestHop: ledgerB + 'mary', bestValue: '60' })
       this.tables.invalidateConnector(ledgerB + 'mary')
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
@@ -369,11 +370,11 @@ describe('RoutingTables', function () {
       })
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: ledgerB + 'mary', bestValue: 60 })
+        { bestHop: ledgerB + 'mary', bestValue: '60' })
       this.tables.invalidateConnectorsRoutesTo(ledgerB + 'mary', ledgerD)
       assertSubset(
         this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
-        { bestHop: ledgerB + 'mary', bestValue: 60 })
+        { bestHop: ledgerB + 'mary', bestValue: '60' })
     })
   })
 
@@ -450,7 +451,7 @@ describe('RoutingTables', function () {
           destination_ledger: ledgerA,
           min_message_window: 1,
           source_account: markB,
-          points: [ [0, 0], [100, 200] ],
+          points: serializePoints([ [0, 0], [100, 200] ]),
           added_during_epoch: 0,
           paths: [ [] ]
         }, {
@@ -458,12 +459,12 @@ describe('RoutingTables', function () {
           destination_ledger: ledgerC,
           min_message_window: 3,
           source_account: markA,
-          points: [
+          points: serializePoints([
             [0, 0], /* .. mary .. */
             [100, 60], /* .. mary (max) .. */
             [120, 60], /* .. mark .. */
             [200, 100] /* .. mark (max) */
-          ],
+          ]),
           added_during_epoch: 2,
           paths: [ [] ]
         }, {
@@ -471,7 +472,7 @@ describe('RoutingTables', function () {
           destination_ledger: ledgerB,
           min_message_window: 1,
           source_account: markA,
-          points: [ [0, 0], [200, 100] ],
+          points: serializePoints([ [0, 0], [200, 100] ]),
           added_during_epoch: 0,
           paths: [ [] ]
         }
@@ -480,7 +481,7 @@ describe('RoutingTables', function () {
 
     ;[
       {
-        desc: 'finds an intersection between a segment a tail',
+        desc: 'finds an intersection between a segment and a tail',
         mary: [ [0, 0], [100, 1000] ],
         martin: [ [0, 0], [10, 500] ],
         output: [
@@ -493,12 +494,12 @@ describe('RoutingTables', function () {
       {
         desc: 'finds an intersection between two segments with slope > 0',
         mary: [ [0, 0], [100, 1000] ],
-        martin: [ [0, 0], [100 / 3, 450], [200 / 3, 550] ],
+        martin: [ [0, 0], [20, 450], [80, 550] ],
         output: [
           [0, 0], /* .. martin (segment 1) .. */
-          [200 / 3, 450], /* .. martin (segment 2) .. */
+          [40, 450], /* .. martin (segment 2) .. */
           [100, 500], /* .. mary .. */
-          [400 / 3, 666.6666666666667], /* .. mary (redundant point) .. */
+          [160, 800], /* .. mary (redundant point) .. */
           [200, 1000] /* .. mary .. (max) */
         ]
       }
@@ -519,15 +520,18 @@ describe('RoutingTables', function () {
           points: test.martin
         })
 
-        assert.deepStrictEqual(this.tables.toJSON(10)[1], {
+        const jsonRoute = this.tables.toJSON(10)[1]
+        assert.deepStrictEqual(jsonRoute, {
           source_ledger: ledgerA,
           destination_ledger: ledgerC,
           min_message_window: 2,
           source_account: markA,
-          points: test.output,
+          points: jsonRoute.points,
           added_during_epoch: 2,
           paths: [ [] ]
         })
+        const pointBuffer = Buffer.from(jsonRoute.points, 'base64')
+        assert.deepStrictEqual(new LiquidityCurve(pointBuffer).getPoints(), test.output)
       })
     }, this)
 
@@ -565,8 +569,7 @@ describe('RoutingTables', function () {
           destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
-          minMessageWindow: 2,
-          liquidityCurve: [ [0, 0], [200, 50] ]
+          minMessageWindow: 2
         })
     })
 
@@ -584,8 +587,7 @@ describe('RoutingTables', function () {
           finalLedger: ledgerB,
           finalAmount: '50',
           minMessageWindow: 1,
-          additionalInfo: {rate_info: '0.5'},
-          liquidityCurve: [ [0, 0], [200, 100] ]
+          additionalInfo: {rate_info: '0.5'}
         })
     })
 
@@ -609,8 +611,7 @@ describe('RoutingTables', function () {
           destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
-          minMessageWindow: 2,
-          liquidityCurve: [ [0, 0], [200, 50] ]
+          minMessageWindow: 2
         })
     })
   })
@@ -630,9 +631,12 @@ describe('RoutingTables', function () {
           finalLedger: ledgerB,
           finalAmount: '50',
           minMessageWindow: 1,
-          additionalInfo: {rate_info: '0.5'},
-          liquidityCurve: [ [0, 0], [200, 100] ]
+          additionalInfo: {rate_info: '0.5'}
         })
+    })
+
+    it('always returns a string integer destinationAmount', function () {
+      assert.equal(this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, '25').destinationAmount, '12')
     })
   })
 })
@@ -642,4 +646,8 @@ function assertSubset (actual, expect) {
   for (const key in expect) {
     assert.deepStrictEqual(actual[key], expect[key])
   }
+}
+
+function serializePoints (points) {
+  return new LiquidityCurve(points).toBuffer().toString('base64')
 }

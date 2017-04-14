@@ -2,10 +2,9 @@
 
 const assert = require('assert')
 const RoutingTable = require('../src/lib/routing-table')
-// Cheat to make the tests easier...
-// RoutingTable only requires amountAt and amountReverse.
-const Curve = require('../src/lib/liquidity-curve')
+const Route = require('../src/lib/route')
 
+const ledgerA = 'ledgerA.'
 const ledgerB = 'ledgerB.'
 const markB = ledgerB + 'mark'
 const maryB = ledgerB + 'mary'
@@ -14,7 +13,7 @@ describe('RoutingTable', function () {
   describe('addRoute', function () {
     it('stores a route', function () {
       const table = new RoutingTable()
-      const route = new Curve([])
+      const route = new Route([], [ledgerA, ledgerB], {})
       table.addRoute(ledgerB, markB, route)
       assert.equal(table.destinations.get(ledgerB).get(markB), route)
     })
@@ -23,7 +22,7 @@ describe('RoutingTable', function () {
   describe('removeRoute', function () {
     it('removes a route', function () {
       const table = new RoutingTable()
-      table.addRoute(ledgerB, markB, new Curve([]))
+      table.addRoute(ledgerB, markB, new Route([], [ledgerA, ledgerB], {}))
       table.removeRoute(ledgerB, markB)
       assert.equal(table.destinations.size(), 0)
     })
@@ -37,16 +36,16 @@ describe('RoutingTable', function () {
   describe('findBestHopForSourceAmount', function () {
     it('returns the best hop', function () {
       const table = new RoutingTable()
-      const routeMark = new Curve([[0, 0], [100, 100]])
-      const routeMary = new Curve([[0, 0], [50, 60]])
+      const routeMark = new Route([[0, 0], [100, 100]], [ledgerA, ledgerB], {})
+      const routeMary = new Route([[0, 0], [50, 60]], [ledgerA, ledgerB], {})
       table.addRoute(ledgerB, markB, routeMark)
       table.addRoute(ledgerB, maryB, routeMary)
       assert.deepEqual(table.findBestHopForSourceAmount(ledgerB, 50),
-        { bestHop: maryB, bestValue: 60, bestRoute: routeMary })
+        { bestHop: maryB, bestValue: '60', bestRoute: routeMary })
       assert.deepEqual(table.findBestHopForSourceAmount(ledgerB, 70),
-        { bestHop: markB, bestValue: 70, bestRoute: routeMark })
+        { bestHop: markB, bestValue: '70', bestRoute: routeMark })
       assert.deepEqual(table.findBestHopForSourceAmount(ledgerB, 200),
-        { bestHop: markB, bestValue: 100, bestRoute: routeMark })
+        { bestHop: markB, bestValue: '100', bestRoute: routeMark })
     })
 
     it('returns undefined when there is no route to the destination', function () {
@@ -58,14 +57,14 @@ describe('RoutingTable', function () {
   describe('findBestHopForDestinationAmount', function () {
     it('returns the best hop', function () {
       const table = new RoutingTable()
-      const routeMark = new Curve([[0, 0], [100, 100]])
-      const routeMary = new Curve([[0, 0], [50, 60]])
+      const routeMark = new Route([[0, 0], [100, 100]], [ledgerA, ledgerB], {})
+      const routeMary = new Route([[0, 0], [50, 60]], [ledgerA, ledgerB], {})
       table.addRoute(ledgerB, markB, routeMark)
       table.addRoute(ledgerB, maryB, routeMary)
       assert.deepEqual(table.findBestHopForDestinationAmount(ledgerB, 60),
-        { bestHop: maryB, bestCost: 50, bestRoute: routeMary })
+        { bestHop: maryB, bestCost: '50', bestRoute: routeMary })
       assert.deepEqual(table.findBestHopForDestinationAmount(ledgerB, 70),
-        { bestHop: markB, bestCost: 70, bestRoute: routeMark })
+        { bestHop: markB, bestCost: '70', bestRoute: routeMark })
     })
 
     it('returns undefined when there is no route to the destination', function () {
@@ -75,7 +74,7 @@ describe('RoutingTable', function () {
 
     it('returns undefined when no route has a high enough destination amount', function () {
       const table = new RoutingTable()
-      table.addRoute(ledgerB, markB, new Curve([[0, 0], [100, 100]]))
+      table.addRoute(ledgerB, markB, new Route([[0, 0], [100, 100]], [ledgerA, ledgerB], {}))
       assert.strictEqual(table.findBestHopForDestinationAmount(ledgerB, 200), undefined)
     })
   })

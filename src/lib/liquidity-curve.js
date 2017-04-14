@@ -2,64 +2,78 @@
 
 const simplify = require('vis-why')
 const Long = require('long')
-const Reader = require('oer-utils').Reader
+const BigNumber = require('bignumber.js')
 
-const MAX_ROUNDING_FACTOR = 1.000001
+BigNumber.config({ DECIMAL_PLACES: 19 })
 
+// TODO use integer math
 class LiquidityCurve {
-  constructor (points) {
-    this.setPoints(points)
+  constructor (data) {
+    if (typeof data === 'string') {
+      this.setData(Buffer.from(data, 'base64'))
+    } else if (data instanceof Array) { // Points (used for tests)
+      this.setData(serializePoints(data))
+    } else { // Buffer
+      this.setData(data)
+    }
   }
 
-  setPoints (points) {
+  setData (data) {
+    if (data.length % 16 !== 0) {
+      throw new InvalidLiquidityCurveError('Invalid LiquidityCurve buffer')
+    }
+    this.data = data
+    this.points = deserializePoints(data)
     let prev
-    this.points = points.slice()
     for (let i = 0; i < this.points.length; i++) {
       let point = this.points[i]
-      if (point[0] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative x-coordinate', this.points)
-      if (point[1] < 0) throw new InvalidLiquidityCurveError('Curve has point with negative y-coordinate', this.points)
-      if (prev && point[0] <= prev[0]) {
-        throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series', this.points)
+      if (prev && point[0].lessThanOrEqualTo(prev[0])) {
+        throw new InvalidLiquidityCurveError('Curve x-coordinates must strictly increase in series', this.getPoints())
       }
-      if (prev && point[1] < prev[1]) {
-        throw new InvalidLiquidityCurveError('Curve y-coordinates must increase in series', this.points)
+      if (prev && point[1].lessThan(prev[1])) {
+        throw new InvalidLiquidityCurveError('Curve y-coordinates must increase in series', this.getPoints())
       }
       prev = point
     }
   }
 
-  getPoints () {
-    return this.points
-  }
-
-  amountAt (x) {
-    if (x < this.points[0][0]) return 0
-    if (x === this.points[0][0]) return this.points[0][1]
+  amountAt (xVal) {
+    const x = bnFromValue(xVal)
+    const firstPoint = this.points[0]
     const lastPoint = this.points[this.points.length - 1]
-    if (lastPoint[0] <= x) return lastPoint[1]
+    if (x.lt(firstPoint[0])) return new BigNumber(0)
+    if (x.eq(firstPoint[0])) return firstPoint[1]
+    if (lastPoint[0].lte(x)) return lastPoint[1]
 
-    let i; for (i = 0; this.points[i][0] < x; i++) ;
+    let i; for (i = 0; this.points[i][0].lt(x); i++) ;
 
     const pointA = this.points[i - 1]
     const pointB = this.points[i]
-    return (pointB[1] - pointA[1]) / (pointB[0] - pointA[0]) * (x - pointA[0]) +
-      pointA[1]
+    const dy = pointB[1].sub(pointA[1])
+    const dx = pointB[0].sub(pointA[0])
+    return dy.mul(x.sub(pointA[0])).div(dx)
+      .add(pointA[1])
+      .floor()
   }
 
-  amountReverse (y) {
-    if (this.points[0][1] >= y) {
+  amountReverse (yVal) {
+    const y = bnFromValue(yVal)
+    if (this.points[0][1].gte(y)) {
       return this.points[0][0]
     }
-    if (this.points[this.points.length - 1][1] < y) {
-      return Infinity
+    if (this.points[this.points.length - 1][1].lt(y)) {
+      return new BigNumber(Infinity)
     }
 
-    let i; for (i = 0; this.points[i][1] < y; i++) ;
+    let i; for (i = 0; this.points[i][1].lt(y); i++) ;
 
     const pointA = this.points[i - 1]
     const pointB = this.points[i]
-    return (pointB[0] - pointA[0]) / (pointB[1] - pointA[1]) * (y - pointA[1]) +
-      pointA[0]
+    const dx = pointB[0].sub(pointA[0])
+    const dy = pointB[1].sub(pointA[1])
+    return dx.mul(y.sub(pointA[1])).div(dy)
+      .add(pointA[0])
+      .floor()
   }
 
   /**
@@ -68,7 +82,7 @@ class LiquidityCurve {
    * Uses the Visvalingam-Whyatt line simplification algorithm.
    */
   simplify (maxPoints) {
-    return new LiquidityCurve(simplify(this.points, maxPoints))
+    return new LiquidityCurve(simplify(this.getPoints(), maxPoints))
   }
 
   /**
@@ -85,25 +99,15 @@ class LiquidityCurve {
         .sort(comparePoints)
         .filter(omitDuplicates)
 
-    // adjust for rounding errors:
-    if (combined.length >= 2) {
-      let succY = combined[combined.length - 1][1]
-      for (let i = combined.length - 2; i >= 0; i--) {
-        if (combined[i][1] > succY && combined[i][1] < succY * MAX_ROUNDING_FACTOR) {
-          combined[i][1] = succY
-        }
-        succY = combined[i][1]
-      }
-    }
-
     // The following check is technically redundant, since LiquidityCurve#setPoints
     // will do the same, and more checks.
     // It's just included here for extra debug output, and can be removed later.
 
-    let prevY = 0
+    let prevY = new BigNumber(0)
     for (let i = 0; i < combined.length; i++) {
-      if (combined[i][1] < prevY) {
-        throw new InvalidLiquidityCurveError(`position ${i}: ${combined[i][1]} < ${prevY}`, {
+      const nextY = new BigNumber(combined[i][1])
+      if (nextY.lt(prevY)) {
+        throw new InvalidLiquidityCurveError(`position ${i}: ${nextY} < ${prevY}`, {
           curve1: this.points,
           curve2: curve.points,
           combined
@@ -129,7 +133,7 @@ class LiquidityCurve {
     if (this.points.length === 0) return points
     return points.map((point) => [
       point[0],
-      Math.max(point[1], this.amountAt(point[0]))
+      max(point[1], this.amountAt(point[0]))
     ])
   }
 
@@ -145,12 +149,12 @@ class LiquidityCurve {
    */
   _crossovers (curve) {
     if (this.points.length === 0 || curve.points.length === 0) return []
-    const endA = this.points[this.points.length - 1]
-    const endB = curve.points[curve.points.length - 1]
     let pointsA = this.points
     let pointsB = curve.points
-    if (endA[0] < endB[0]) pointsA = pointsA.concat([ [endB[0], endA[1]] ])
-    if (endB[0] < endA[0]) pointsB = pointsB.concat([ [endA[0], endB[1]] ])
+    const endA = pointsA[pointsA.length - 1]
+    const endB = pointsB[pointsB.length - 1]
+    if (endA[0].lt(endB[0])) pointsA = pointsA.concat([ [endB[0], endA[1]] ])
+    if (endB[0].lt(endA[0])) pointsB = pointsB.concat([ [endA[0], endB[1]] ])
 
     const result = []
     this._eachOverlappingSegment(pointsA, pointsB, (lineA, lineB) => {
@@ -171,8 +175,8 @@ class LiquidityCurve {
       const lineA = toLine(pointsA[indexA - 1], pointsA[indexA])
       for (let indexB = cursor; indexB < pointsB.length; indexB++) {
         const lineB = toLine(pointsB[indexB - 1], pointsB[indexB])
-        if (lineB.x1 < lineA.x0) { cursor++; continue }
-        if (lineA.x1 < lineB.x0) break
+        if (lineB.x1.lt(lineA.x0)) { cursor++; continue }
+        if (lineA.x1.lt(lineB.x0)) break
         each(lineA, lineB)
       }
     }
@@ -189,7 +193,7 @@ class LiquidityCurve {
     const maxX = curve.points[curve.points.length - 1][0]
     this.points.forEach((p) => {
       // If `p.y` is not within `curve`'s domain, don't use it to form the new curve.
-      if (minX <= p[1] && p[1] <= maxX) {
+      if (minX.lte(p[1]) && p[1].lte(maxX)) {
         leftPoints.push([ p[0], curve.amountAt(p[1]) ])
       }
     })
@@ -205,73 +209,55 @@ class LiquidityCurve {
     )
   }
 
-  shiftX (dx) {
-    let shiftedPoints = this.points.map((p) => [ p[0] + dx, p[1] ])
-    if (dx >= 0) return new LiquidityCurve(shiftedPoints)
+  shiftX (_dx) {
+    const dx = new BigNumber(_dx)
+    let shiftedPoints = this.points.map((p) => [ p[0].add(dx), p[1] ])
+    if (dx.gte(0)) return new LiquidityCurve(shiftedPoints)
 
     for (let i = shiftedPoints.length - 1; i >= 0; i--) {
       if (shiftedPoints[i][0] < 0) {
         shiftedPoints = shiftedPoints.slice(i + 1)
-        shiftedPoints.unshift([0, this.amountAt(-dx)])
+        shiftedPoints.unshift([0, this.amountAt(dx.negated())])
         break
       }
     }
     return new LiquidityCurve(shiftedPoints)
   }
 
-  shiftY (dy) {
-    let shiftedPoints = this.points.map((p) => [ p[0], p[1] + dy ])
-    if (dy >= 0) return new LiquidityCurve(shiftedPoints)
+  shiftY (_dy) {
+    const dy = new BigNumber(_dy)
+    let shiftedPoints = this.points.map((p) => [ p[0], p[1].add(dy) ])
+    if (dy.gte(0)) return new LiquidityCurve(shiftedPoints)
 
     for (let i = shiftedPoints.length - 1; i >= 0; i--) {
-      if (shiftedPoints[i][1] < 0) {
+      if (shiftedPoints[i][1].isNegative()) {
         shiftedPoints = shiftedPoints.slice(i + 1)
-        shiftedPoints.unshift([this.amountReverse(-dy), 0])
+        shiftedPoints.unshift([this.amountReverse(dy.negated()), new BigNumber(0)])
         break
       }
     }
     return new LiquidityCurve(shiftedPoints)
   }
 
-  toBuffer () {
-    const buffer = Buffer.alloc(this.points.length * 16)
-    let i = 0
-    for (const point of this.points) {
-      const x = Long.fromNumber(point[0])
-      const y = Long.fromNumber(point[1])
-      buffer.writeUInt32BE(x.getHighBitsUnsigned(), i)
-      buffer.writeUInt32BE(x.getLowBitsUnsigned(), i + 4)
-      buffer.writeUInt32BE(y.getHighBitsUnsigned(), i + 8)
-      buffer.writeUInt32BE(y.getLowBitsUnsigned(), i + 12)
-      i += 16
-    }
-    return buffer
+  /**
+   * This converts the points to a list of pairs of numbers.
+   * It can lose precision, so it should only be used for testing/debugging.
+   */
+  getPoints () {
+    return this.points.map((point) => [
+      point[0].toNumber(),
+      point[1].toNumber()
+    ])
   }
 
-  static fromBuffer (buffer) {
-    const points = []
-    if (buffer.length % 16 !== 0) {
-      throw new Error('Invalid LiquidityCurve buffer')
-    }
-    const reader = Reader.from(buffer)
-    for (let i = 0; i < buffer.length; i += 16) {
-      const x = reader.readUInt64()
-      const y = reader.readUInt64()
-      points.push([
-        new Long(x[1], x[0], true).toNumber(),
-        new Long(y[1], y[0], true).toNumber()
-      ])
-    }
-    return new LiquidityCurve(points)
-  }
+  toBuffer () { return this.data }
 }
 
-function comparePoints (a, b) { return a[0] - b[0] }
-
-function omitInfinity (point) { return point[0] !== Infinity }
+function omitInfinity (point) { return point[0].toString() !== 'Infinity' }
+function comparePoints (a, b) { return a[0].comparedTo(b[0]) }
 
 function omitDuplicates (point, i, points) {
-  return i === 0 || (point[0] !== points[i - 1][0])
+  return i === 0 || !point[0].eq(points[i - 1][0])
 }
 
 /**
@@ -282,14 +268,12 @@ function omitDuplicates (point, i, points) {
 function toLine (pA, pB) {
   const x0 = pA[0]; const x1 = pB[0]
   const y0 = pA[1]; const y1 = pB[1]
-  const dx = x1 - x0
-  const m = (y1 - y0) / dx
-  let b = (x1 * y0 - x0 * y1) / dx
-  // avoid rounding errors on horizontal lines,
-  // see https://github.com/interledgerjs/ilp-routing/issues/35:
-  if (y1 === y0) {
-    b = y0
-  }
+  const dx = x1.sub(x0)
+  const dy = y1.sub(y0)
+  const m = dx.isZero() ? null : dy.div(dx)
+  const x1y0 = x1.mul(y0)
+  const x0y1 = x0.mul(y1)
+  const b = x1y0.sub(x0y1).div(dx)
   return {m, b, x0, x1}
 }
 
@@ -301,19 +285,79 @@ function toLine (pA, pB) {
  *      m₀ - m₁
  */
 function intersectLineSegments (line0, line1) {
-  if (line0.m === line1.m) return
-  if (isNaN(line0.m) || isNaN(line1.m)) return
-  const x = (line1.b - line0.b) / (line0.m - line1.m)
-  const y = line0.m * x + line0.b
+  if (line0.m === null || line1.m === null) return
+  if (line0.m.eq(line1.m)) return
+  // Ensure that if the lines intersect, it is in quadrant I.
+  if (line0.m.gt(line1.m) && line0.b.gt(line1.b)) return
+  if (line1.m.gt(line0.m) && line1.b.gt(line0.b)) return
+
+  const dB = line1.b.sub(line0.b)
+  const dM = line0.m.sub(line1.m)
+  const x = dB.div(dM)
+  const y = line0.m.mul(x).add(line0.b)
   // Verify that the solution is in the domain.
-  if (x < line0.x0 || line0.x1 < x) return
-  if (x < line1.x0 || line1.x1 < x) return
+  if (x.lt(line0.x0) || line0.x1.lt(x)) return
+  if (x.lt(line1.x0) || line1.x1.lt(x)) return
   return [x, y]
+}
+
+function max (long1, long2) {
+  return long1.gt(long2) ? long1 : long2
+}
+
+function bnFromValue (rawValue) {
+  let value = rawValue
+  if (typeof value === 'number') {
+    if (value < 0) {
+      throw new InvalidLiquidityCurveError('Cannot parse negative value: ' + value)
+    }
+    value = Math.floor(value)
+  }
+  if (typeof value === 'string' && value[0] === '-') {
+    throw new InvalidLiquidityCurveError('Cannot parse negative value: ' + value)
+  }
+  if (value.isBigNumber && value.isNegative()) {
+    throw new InvalidLiquidityCurveError('Cannot parse negative value: ' + value.toString())
+  }
+  return new BigNumber(value)
+}
+
+function serializePoints (points) {
+  const buffer = Buffer.alloc(points.length * 16)
+  let i = 0
+  for (const point of points) {
+    const x = Long.fromString(bnFromValue(point[0]).toFixed(0), true)
+    const y = Long.fromString(bnFromValue(point[1]).toFixed(0), true)
+    buffer.writeUInt32LE(x.getHighBitsUnsigned(), i)
+    buffer.writeUInt32LE(x.getLowBitsUnsigned(), i + 4)
+    buffer.writeUInt32LE(y.getHighBitsUnsigned(), i + 8)
+    buffer.writeUInt32LE(y.getLowBitsUnsigned(), i + 12)
+    i += 16
+  }
+  return buffer
+}
+
+function deserializePoints (buffer) {
+  const array = new Uint32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4)
+  const points = []
+  for (let i = 0; i < array.length; i += 4) {
+    const xHi = array[i]
+    const xLo = array[i + 1]
+    const yHi = array[i + 2]
+    const yLo = array[i + 3]
+    points.push([
+      new BigNumber(new Long(xLo, xHi, true).toString()),
+      new BigNumber(new Long(yLo, yHi, true).toString())
+    ])
+  }
+  return points
 }
 
 class InvalidLiquidityCurveError extends Error {
   constructor (message, points) {
-    message = message + ' points:' + JSON.stringify(points)
+    if (points) {
+      message = message + ' points:' + JSON.stringify(points)
+    }
     super(message)
     this.name = 'InvalidLiquidityCurveError'
   }
