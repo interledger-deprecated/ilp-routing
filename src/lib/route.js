@@ -98,7 +98,7 @@ class Route {
       minMessageWindow: this.minMessageWindow + tailRoute.minMessageWindow,
       isLocal: this.isLocal && tailRoute.isLocal,
       sourceAccount: this.sourceAccount,
-      expiresAt: Date.now() + expiryDuration,
+      expiresAt: expiryDuration && Date.now() + expiryDuration,
       targetPrefix: tailRoute.targetPrefix,
 
       destinationPrecision: tailRoute.destinationPrecision,

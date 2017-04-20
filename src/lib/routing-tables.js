@@ -69,11 +69,11 @@ class RoutingTables {
    * @param {Route|RouteData} _route from ledger B→C
    * @returns {Boolean} whether or not a new route was added
    */
-  addRoute (_route) {
+  addRoute (_route, noExpire) {
     const route = Route.fromData(_route, this.currentEpoch)
     let added = false
     this.eachSource((tableFromA, ledgerA) => {
-      added = this._addRouteFromSource(tableFromA, ledgerA, route) || added
+      added = this._addRouteFromSource(tableFromA, ledgerA, route, noExpire) || added
     })
     if (added) {
       debug('added route matching ', route.targetPrefix, ':', route.sourceAccount, route.destinationLedger)
@@ -82,7 +82,7 @@ class RoutingTables {
     return added
   }
 
-  _addRouteFromSource (tableFromA, ledgerA, routeFromBToC) {
+  _addRouteFromSource (tableFromA, ledgerA, routeFromBToC, noExpire) {
     const ledgerB = routeFromBToC.sourceLedger
     const ledgerC = routeFromBToC.targetPrefix
     const connectorFromBToC = routeFromBToC.sourceAccount
@@ -99,7 +99,8 @@ class RoutingTables {
     }
 
     // Make sure the routes can be joined.
-    const routeFromAToC = routeFromAToB.join(routeFromBToC, this.expiryDuration, this.currentEpoch)
+    const expiryDuration = noExpire ? null : this.expiryDuration
+    const routeFromAToC = routeFromAToB.join(routeFromBToC, expiryDuration, this.currentEpoch)
     if (!routeFromAToC) {
       return
     }

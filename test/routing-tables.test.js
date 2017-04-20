@@ -276,6 +276,26 @@ describe('RoutingTables', function () {
       assert.deepStrictEqual(lll, [ledgerC])
       assert.equal(this.tables.toJSON(10).length, 2)
     })
+
+    it('doesn\'t expire noExpire routes', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }, true) // noExpire
+
+      // expire nothing
+      assert.equal(this.tables.toJSON(10).length, 3)
+      this.tables.removeExpiredRoutes()
+      assert.equal(this.tables.toJSON(10).length, 3)
+
+      this.clock.tick(45001)
+      this.tables.removeExpiredRoutes()
+      // it shouldn't have expired
+      assert.equal(this.tables.toJSON(10).length, 3)
+    })
   })
 
   describe('bumpConnector', function () {
