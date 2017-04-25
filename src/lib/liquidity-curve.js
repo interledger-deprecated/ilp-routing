@@ -221,7 +221,12 @@ function toLine (pA, pB) {
   const y0 = pA[1]; const y1 = pB[1]
   const dx = x1 - x0
   const m = (y1 - y0) / dx
-  const b = (x1 * y0 - x0 * y1) / dx
+  let b = (x1 * y0 - x0 * y1) / dx
+  // avoid rounding errors on horizontal lines,
+  // see https://github.com/interledgerjs/ilp-routing/issues/35:
+  if (y1 === y0) {
+    b = y0
+  }
   return {m, b, x0, x1}
 }
 

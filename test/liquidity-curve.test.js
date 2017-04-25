@@ -105,6 +105,30 @@ describe('LiquidityCurve', function () {
   })
 
   describe('combine', function () {
+    it('doesnt create non-increasing y coordinates', function () {
+      // these values are from logs of the alpha-network, where non-increasing y coordinates were happening:
+      const curve1 = new LiquidityCurve([
+        [ 3.1106513517718273e-9, 0 ],
+        [ 3.1823209022210673e-9, 6.554011045591627e-11 ],
+        [ 3.8945426576388946e-8, 3.2770055227955495e-8 ],
+        [ 910129733768357, 833960056822929.9 ],
+        [ 100000000000000000, 91630898967551630 ]
+      ])
+      const curve2 = new LiquidityCurve([
+       [ 1.098235347143601e-9, 0 ],
+       [ 908309474300820.4, 833960056822929.8 ]
+      ])
+      assert.deepEqual(curve1.combine(curve2).points, [
+        [ 1.098235347143601e-9, 0 ],
+        [ 3.1106513517718273e-9, 1.8476902565207704e-9 ],
+        [ 3.1823209022210673e-9, 1.9134933160023747e-9 ],
+        [ 3.8945426576388946e-8, 3.47492199973205e-8 ],
+        [ 908309474300820.4, 833960056822929.8 ],
+        [ 910129733768356.9, 833960056822929.8 ],
+        [ 910129733768357, 833960056822929.9 ],
+        [ 100000000000000000, 91630898967551630 ]
+      ])
+    })
     it('finds an intersection between a slope and a flat line', function () {
       const curve1 = new LiquidityCurve([ [0, 0], [50, 60] ])
       const curve2 = new LiquidityCurve([ [0, 0], [100, 100] ])
