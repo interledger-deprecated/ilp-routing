@@ -2,6 +2,8 @@
 
 const simplify = require('code42day-vis-why')
 
+const MAX_ROUNDING_FACTOR = 1.000001
+
 class LiquidityCurve {
   constructor (points) {
     this.setPoints(points)
@@ -80,6 +82,17 @@ class LiquidityCurve {
         .concat(this._crossovers(curve))
         .sort(comparePoints)
         .filter(omitDuplicates)
+
+    // adjust for rounding errors:
+    if (combined.length >= 2) {
+      let succY = combined[combined.length - 1][1]
+      for (let i = combined.length - 2; i >= 0; i--) {
+        if (combined[i][1] > succY && combined[i][1] < succY * MAX_ROUNDING_FACTOR) {
+          combined[i][1] = succY
+        }
+        succY = combined[i][1]
+      }
+    }
 
     // The following check is technically redundant, since LiquidityCurve#setPoints
     // will do the same, and more checks.
