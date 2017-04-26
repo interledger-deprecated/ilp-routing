@@ -75,12 +75,28 @@ class LiquidityCurve {
    * @returns {LiquidityCurve}
    */
   combine (curve) {
-    return new LiquidityCurve(
-      this._mapToMax(curve.points)
+    const combined = this._mapToMax(curve.points)
         .concat(curve._mapToMax(this.points))
         .concat(this._crossovers(curve))
         .sort(comparePoints)
-        .filter(omitDuplicates))
+        .filter(omitDuplicates)
+
+    // The following check is technically redundant, since LiquidityCurve#setPoints
+    // will do the same, and more checks.
+    // It's just included here for extra debug output, and can be removed later.
+
+    let prevY = 0
+    for (let i = 0; i < combined.length; i++) {
+      if (combined[i][1] < prevY) {
+        throw new InvalidLiquidityCurveError(`position ${i}: ${combined[i][1]} < ${prevY}`, {
+          curve1: this.points,
+          curve2: curve.points,
+          combined
+        })
+      }
+      prevY = combined[i][1]
+    }
+    return new LiquidityCurve(combined)
   }
 
   /**
