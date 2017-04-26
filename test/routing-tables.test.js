@@ -451,7 +451,8 @@ describe('RoutingTables', function () {
           min_message_window: 1,
           source_account: markB,
           points: [ [0, 0], [100, 200] ],
-          added_during_epoch: 0
+          added_during_epoch: 0,
+          paths: [ [] ]
         }, {
           source_ledger: ledgerA,
           destination_ledger: ledgerC,
@@ -463,14 +464,16 @@ describe('RoutingTables', function () {
             [120, 60], /* .. mark .. */
             [200, 100] /* .. mark (max) */
           ],
-          added_during_epoch: 2
+          added_during_epoch: 2,
+          paths: [ [] ]
         }, {
           source_ledger: ledgerA,
           destination_ledger: ledgerB,
           min_message_window: 1,
           source_account: markA,
           points: [ [0, 0], [200, 100] ],
-          added_during_epoch: 0
+          added_during_epoch: 0,
+          paths: [ [] ]
         }
       ])
     })
@@ -522,7 +525,8 @@ describe('RoutingTables', function () {
           min_message_window: 2,
           source_account: markA,
           points: test.output,
-          added_during_epoch: 2
+          added_during_epoch: 2,
+          paths: [ [] ]
         })
       })
     }, this)

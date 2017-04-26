@@ -10,9 +10,9 @@ const ledgerA = 'ledgerA.'
 const ledgerB = 'ledgerB.'
 const ledgerC = 'ledgerC.'
 const ledgerD = 'ledgerD.'
-const hopsABC = [ledgerA, ledgerB, ledgerC]
-const hopsADC = [ledgerA, ledgerD, ledgerC]
-const hopsBCD = [ledgerB, ledgerC, ledgerD]
+const hopsABC = { sourceLedger: ledgerA, nextLedger: ledgerB, destinationLedger: ledgerC }
+const hopsADC = { sourceLedger: ledgerA, nextLedger: ledgerD, destinationLedger: ledgerC }
+const hopsBCD = { sourceLedger: ledgerB, nextLedger: ledgerC, destinationLedger: ledgerD }
 
 const markA = ledgerA + 'mark'
 const markC = ledgerC + 'mark'
@@ -24,20 +24,21 @@ describe('Route', function () {
 
   describe('constructor', function () {
     it('sets up a curve and the hops', function () {
-      const route = new Route([[0, 0], [100, 200]], hopsABC, {
+      const route = new Route([[0, 0], [100, 200]], Object.assign({
         minMessageWindow: 3,
         expiresAt: 1234,
         isLocal: true,
         sourceAccount: markA,
         destinationAccount: markC,
         additionalInfo: {foo: 'bar'}
-      })
+      }, hopsABC))
 
       assert.ok(route.curve instanceof LiquidityCurve)
-      assert.deepEqual(route.hops, hopsABC)
       assert.equal(route.sourceLedger, ledgerA)
       assert.equal(route.nextLedger, ledgerB)
       assert.equal(route.destinationLedger, ledgerC)
+      assert.deepEqual(route.paths, [[]])
+
       assert.equal(route.targetPrefix, route.destinationLedger,
         'should default target prefix to destination ledger')
 
@@ -76,17 +77,24 @@ describe('Route', function () {
   })
 
   describe('combine', function () {
-    const route1 = new Route([[0, 0], [100, 100]], hopsABC, { minMessageWindow: 1 })
-    const route2 = new Route([[0, 0], [50, 60]], hopsADC, { minMessageWindow: 2 })
+    const route1 = new Route([[0, 0], [100, 100]], Object.assign({ minMessageWindow: 1 }, hopsABC), [['path1.']])
+    const route2 = new Route([[0, 0], [50, 60]], Object.assign({ minMessageWindow: 2 }, hopsADC), [['path2a1.', 'path2a2.'], ['path2b.']])
     const combinedRoute = route1.combine(route2)
 
     it('combines the curves', function () {
       assert.deepEqual(combinedRoute.getPoints(),
-        [ [0, 0], [50, 60], [60, 60], [100, 100] ])
+        [[0, 0], [50, 60], [60, 60], [100, 100]])
     })
 
     it('only uses the boundary ledgers in "hops"', function () {
-      assert.deepEqual(combinedRoute.hops, [ledgerA, ledgerC])
+      assert.equal(combinedRoute.sourceLedger, ledgerA)
+      assert.equal(combinedRoute.nextLedger, ledgerB)
+      assert.equal(combinedRoute.destinationLedger, ledgerC)
+      assert.deepEqual(combinedRoute.paths, [
+        [ 'path1.' ],
+        [ 'path2a1.', 'path2a2.' ],
+        [ 'path2b.' ]
+      ])
     })
 
     it('picks the larger minMessageWindow', function () {
@@ -96,21 +104,31 @@ describe('Route', function () {
 
   describe('join', function () {
     it('succeeds if the routes are adjacent', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {
+      const route1 = new Route([[0, 0], [200, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB,
         isLocal: true,
         minMessageWindow: 1
-      })
-      const route2 = new Route([ [0, 0], [50, 60] ], hopsBCD, {
+      }, [['path1a.'], ['path1b.']])
+      const route2 = new Route([[0, 0], [50, 60]], Object.assign({
         isLocal: false,
         minMessageWindow: 2
-      })
+      }, hopsBCD), [['path2a1.', 'path2a2.'], ['path2b.']])
       const joinedRoute = route1.join(route2, 1000)
 
       // It joins the curves
       assert.deepEqual(joinedRoute.getPoints(),
-        [ [0, 0], [100, 60] ])
-      // It concatenates the hops
-      assert.deepEqual(joinedRoute.hops, [ledgerA, ledgerB, ledgerC, ledgerD])
+        [[0, 0], [100, 60]])
+      // It concatenates the hops to ledgerA ledger, *[ 'path1a.' || 'path1b.' ]* ledgerC *[ ('path2a1.', 'path2a2.') || 'path2b.' ]* ledgerD
+      assert.deepEqual(joinedRoute.sourceLedger, ledgerA)
+      assert.deepEqual(joinedRoute.nextLedger, ledgerB)
+      assert.deepEqual(joinedRoute.destinationLedger, ledgerD)
+      assert.deepEqual(joinedRoute.paths, [
+        [ 'path1a.', ledgerC, 'path2a1.', 'path2a2.' ],
+        [ 'path1a.', ledgerC, 'path2b.' ],
+        [ 'path1b.', ledgerC, 'path2a1.', 'path2a2.' ],
+        [ 'path1b.', ledgerC, 'path2b.' ]
+      ])
       // It isn't a local pair.
       assert.equal(joinedRoute.isLocal, false)
       // It combines the minMessageWindows
@@ -120,14 +138,16 @@ describe('Route', function () {
     })
 
     it('sets isLocal to true if both routes are local', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {
+      const route1 = new Route([[0, 0], [200, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB,
         isLocal: true,
         minMessageWindow: 1
       })
-      const route2 = new Route([ [0, 0], [50, 60] ], hopsBCD, {
+      const route2 = new Route([[0, 0], [50, 60]], Object.assign({
         isLocal: true,
         minMessageWindow: 2
-      })
+      }, hopsBCD))
       const joinedRoute = route1.join(route2, 1000)
 
       // It is a local pair.
@@ -135,32 +155,68 @@ describe('Route', function () {
     })
 
     it('fails if the routes aren\'t adjacent', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {})
-      const route2 = new Route([ [0, 0], [50, 60] ], [ledgerC, ledgerD], {})
+      const route1 = new Route([[0, 0], [200, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB
+      })
+      const route2 = new Route([[0, 0], [50, 60]], {
+        sourceLedger: ledgerC,
+        nextLedger: ledgerD
+      })
       assert.strictEqual(route1.join(route2, 0), undefined)
     })
 
     it('fails if the joined route would double back', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerB, ledgerA], {})
-      const route2 = new Route([ [0, 0], [50, 60] ], hopsABC, {})
+      const route1 = new Route([[0, 0], [200, 100]], {
+        sourceLedger: ledgerB,
+        nextLedger: ledgerA
+      })
+      const route2 = new Route([[0, 0], [50, 60]], hopsABC)
       assert.strictEqual(route1.join(route2, 0), undefined)
+    })
+  })
+
+  describe('shiftX', function () {
+    it('creates a shifted route', function () {
+      const route1 = new Route([[0, 0], [50, 60], [100, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB,
+        isLocal: true
+      }, [['some.path.']])
+      const route2 = route1.shiftX(1)
+      assert.equal(route2.isLocal, true)
+      assert.deepEqual(route2.curve.points,
+        [[1, 0], [51, 60], [101, 100]])
+      assert.deepEqual(route2.paths, [['some.path.']])
     })
   })
 
   describe('shiftY', function () {
     it('creates a shifted route', function () {
-      const route1 = new Route([ [0, 0], [50, 60], [100, 100] ], [ledgerA, ledgerB], {isLocal: true})
+      const route1 = new Route([[0, 0], [50, 60], [100, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB,
+        isLocal: true
+      }, [['some.path.']])
       const route2 = route1.shiftY(1)
       assert.equal(route2.isLocal, true)
       assert.deepEqual(route2.curve.points,
-        [ [0, 1], [50, 61], [100, 101] ])
+        [[0, 1], [50, 61], [100, 101]])
+      assert.deepEqual(route2.paths, [['some.path.']])
     })
   })
 
   describe('isExpired', function () {
     it('doesn\'t expire routes by default', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {})
-      const route2 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {expiresAt: Date.now() + 1000})
+      const route1 = new Route([[0, 0], [200, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB
+      })
+      const route2 = new Route([[0, 0], [200, 100]], {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB,
+        expiresAt: Date.now() + 1000
+      })
       assert.strictEqual(route1.isExpired(), false)
       assert.strictEqual(route2.isExpired(), false)
 
@@ -172,8 +228,8 @@ describe('Route', function () {
 
   describe('bumpExpiration', function () {
     it('doesn\'t expire routes that have been bumped, but they expire when specified', function () {
-      const route1 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {})
-      const route2 = new Route([ [0, 0], [200, 100] ], [ledgerA, ledgerB], {expiresAt: Date.now() + 1000})
+      const route1 = new Route([[0, 0], [200, 100]], { sourceLedger: ledgerA, nextLedger: ledgerB })
+      const route2 = new Route([[0, 0], [200, 100]], { sourceLedger: ledgerA, nextLedger: ledgerB, expiresAt: Date.now() + 1000 })
       assert.strictEqual(route1.isExpired(), false)
       assert.strictEqual(route2.isExpired(), false)
 
