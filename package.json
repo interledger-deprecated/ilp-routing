@@ -7,7 +7,7 @@
     "test": "test"
   },
   "dependencies": {
-    "code42day-vis-why": "^1.0.3",
+    "vis-why": "^1.2.2",
     "debug": "^2.2.0",
     "lodash": "^4.14.1"
   },
