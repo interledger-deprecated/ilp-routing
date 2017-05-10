@@ -1,6 +1,6 @@
 'use strict'
 
-const simplify = require('code42day-vis-why')
+const simplify = require('vis-why')
 
 const MAX_ROUNDING_FACTOR = 1.000001
 
