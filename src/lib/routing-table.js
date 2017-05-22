@@ -48,7 +48,11 @@ class RoutingTable {
     let bestRoute = null
     routes.forEach((route, nextHop) => {
       const value = route.amountAt(sourceAmount)
-      if (value > bestValue) {
+      // If we have a route but not a curve, pick a route at random
+      // and get a remote quote. In the future we may refactor this
+      // so that multiple next hop options can be returned, and all
+      // can be asked for a quote, but for now, it's just the last.
+      if (value === undefined || value > bestValue) {
         bestHop = nextHop
         bestValue = value
         bestRoute = route
@@ -77,7 +81,11 @@ class RoutingTable {
     let bestRoute = null
     routes.forEach((route, nextHop) => {
       const cost = route.amountReverse(destinationAmount)
-      if (cost < bestCost) {
+      // If we have a route but not a curve, pick a route at random
+      // and get a remote quote. In the future we may refactor this
+      // so that multiple next hop options can be returned, and all
+      // can be asked for a quote, but for now, it's just the last.
+      if (cost === undefined || cost < bestCost) {
         bestHop = nextHop
         bestCost = cost
         bestRoute = route

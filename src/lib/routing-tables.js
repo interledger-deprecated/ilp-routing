@@ -254,18 +254,28 @@ class RoutingTables {
     const nextLedger = nextHop.bestRoute.nextLedger
     const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
     const isFinal = nextLedger === finalLedger
+    // CAUTION: The amount at the `destinationLedger` (or `finalLedger`) is confusingly
+    // called `finalAmount` here, but will be **renamed** to `destinationAmount` by
+    // https://github.com/interledgerjs/ilp-core/blob/v14.0.1/src/lib/core.js#L199
+    // As you can see, even more confusingly, this function does actually return a
+    // `destinationAmount` field, but that is a bit of a misnomer here.
+    // `nextAmount` would be a better name for that field, since it is the amount at
+    // the `nextLedger` (see `const routeFromAToB` above).
+    // It will be ignored by
+    // https://github.com/interledgerjs/ilp-core/blob/v14.0.1/src/lib/core.js#L199
+    // but I left it in, since it is being checked by the unit tests - MJ.
     return omitUndefined({
       isFinal: isFinal,
       isLocal: nextHop.bestRoute.isLocal,
       sourceLedger: sourceLedger,
-      sourceAmount: nextHop.bestCost.toString(),
+      sourceAmount: nextHop.bestCost && nextHop.bestCost.toString(),
       destinationLedger: nextLedger,
-      destinationAmount: routeFromAToB.amountAt(nextHop.bestCost).toString(),
+      destinationAmount: nextHop.bestCost && routeFromAToB.amountAt(nextHop.bestCost).toString(),
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
-      finalAmount: finalAmount,
+      finalAmount: finalAmount, // CAUTION: this will be used as destinationAmount
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
-      liquidityCurve: nextHop.bestRoute.curve.getPoints(),
+      liquidityCurve: nextHop.bestRoute.curve && nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     })
   }
@@ -293,9 +303,9 @@ class RoutingTables {
       destinationAmount: routeFromAToB.amountAt(+sourceAmount).toString(),
       destinationCreditAccount: isFinal ? null : nextHop.bestHop,
       finalLedger: finalLedger,
-      finalAmount: nextHop.bestValue.toString(),
+      finalAmount: nextHop.bestValue && nextHop.bestValue.toString(),
       minMessageWindow: nextHop.bestRoute.minMessageWindow,
-      liquidityCurve: nextHop.bestRoute.curve.getPoints(),
+      liquidityCurve: nextHop.bestRoute.curve && nextHop.bestRoute.curve.getPoints(),
       additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
     })
   }

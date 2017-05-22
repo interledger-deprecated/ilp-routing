@@ -21,7 +21,9 @@ class Route {
    * @param {String[][]} paths - possible lists of hops inbetween nextLedger and destinationLedger
    */
   constructor (curve, info, paths = [ [] ]) {
-    this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
+    if (curve) {
+      this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
+    }
     this.sourceLedger = info.sourceLedger
     this.nextLedger = info.nextLedger
     this.destinationLedger = info.destinationLedger || info.nextLedger
@@ -48,8 +50,8 @@ class Route {
   }
 
   // Proxy some functions to the LiquidityCurve.
-  amountAt (x) { return this.curve.amountAt(x) }
-  amountReverse (y) { return this.curve.amountReverse(y) }
+  amountAt (x) { return this.curve && this.curve.amountAt(x) }
+  amountReverse (y) { return this.curve && this.curve.amountReverse(y) }
   getPoints () { return this.curve.getPoints() }
 
   /**
@@ -85,9 +87,10 @@ class Route {
   join (tailRoute, expiryDuration, addedDuringEpoch) {
     // Make sure the routes are actually adjacent, and check for loops:
     if (!canJoin(this, tailRoute)) return
-
-    const joinedCurve = this.curve.join(tailRoute.curve)
-
+    let joinedCurve
+    if (this.curve && tailRoute.curve) {
+      joinedCurve = this.curve.join(tailRoute.curve)
+    }
     // Example:
     // this = {
     //   sourceLedger: S1,
