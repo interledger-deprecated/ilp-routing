@@ -569,6 +569,10 @@ describe('RoutingTables', function () {
           destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
+          liquidityCurve: [
+            [ 0, 0 ],
+            [ 200, 50 ]
+          ],
           minMessageWindow: 2
         })
     })
@@ -587,6 +591,10 @@ describe('RoutingTables', function () {
           finalLedger: ledgerB,
           finalAmount: '50',
           minMessageWindow: 1,
+          liquidityCurve: [
+            [ 0, 0 ],
+            [ 200, 100 ]
+          ],
           additionalInfo: {rate_info: '0.5'}
         })
     })
@@ -611,6 +619,10 @@ describe('RoutingTables', function () {
           destinationCreditAccount: ledgerB + 'mary',
           finalLedger: ledgerC,
           finalAmount: '25',
+          liquidityCurve: [
+            [ 0, 0 ],
+            [ 200, 50 ]
+          ],
           minMessageWindow: 2
         })
     })
@@ -631,6 +643,10 @@ describe('RoutingTables', function () {
           finalLedger: ledgerB,
           finalAmount: '50',
           minMessageWindow: 1,
+          liquidityCurve: [
+            [ 0, 0 ],
+            [ 200, 100 ]
+          ],
           additionalInfo: {rate_info: '0.5'}
         })
     })
