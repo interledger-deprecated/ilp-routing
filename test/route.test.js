@@ -57,10 +57,6 @@ describe('Route', function () {
       it('finds the corresponding amount', function () {
         assert.equal(route.amountAt(55), 110)
       })
-
-      it('returns 0 if the actual value is negative', function () {
-        assert.equal(route.shiftY(-40).amountAt(10), 0)
-      })
     })
 
     describe('amountReverse', function () {
@@ -185,7 +181,7 @@ describe('Route', function () {
       }, [['some.path.']])
       const route2 = route1.shiftX(1)
       assert.equal(route2.isLocal, true)
-      assert.deepEqual(route2.curve.points,
+      assert.deepEqual(route2.curve.getPoints(),
         [[1, 0], [51, 60], [101, 100]])
       assert.deepEqual(route2.paths, [['some.path.']])
     })
@@ -200,7 +196,7 @@ describe('Route', function () {
       }, [['some.path.']])
       const route2 = route1.shiftY(1)
       assert.equal(route2.isLocal, true)
-      assert.deepEqual(route2.curve.points,
+      assert.deepEqual(route2.curve.getPoints(),
         [[0, 1], [50, 61], [100, 101]])
       assert.deepEqual(route2.paths, [['some.path.']])
     })

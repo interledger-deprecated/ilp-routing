@@ -19,14 +19,6 @@
 
 #### `new Route(curve, hops, info)`
 #### `Route.fromData(routeData) ⇒ Route`
-#### `route.amountAt(x) ⇒ Number`
-
-Given a source amount, look up the corresponding destination amount.
-
-#### `route.amountReverse(y) ⇒ Number`
-
-Given a destination amount, look up the corresponding source amount.
-
 #### `route.getPoints(y) ⇒ Point[]`
 
 #### `route.combine(alternateRoute) ⇒ Route`

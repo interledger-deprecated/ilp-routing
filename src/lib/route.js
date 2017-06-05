@@ -6,7 +6,7 @@ const LiquidityCurve = require('./liquidity-curve')
 
 class Route {
   /**
-   * @param {LiquidityCurve|Point[]} curve
+   * @param {LiquidityCurve|Point[]|Buffer} curve
    * @param {Object} info
    * @param {String} info.sourceLedger - the ledger through which an incoming route enters this connector
    * @param {String} info.nextLedger - the ledger to which this connector should forward payments
@@ -115,7 +115,7 @@ class Route {
     // If N1 === J, don't include J in the joined paths
     // If N2 === D2, don't include N2 in the joined paths
     const havePaths = {}
-    this.paths.map(headPath => {
+    this.paths.map((headPath) => {
       if (this.destinationLedger !== this.nextLedger) {
         // N1 !== J, so include J:
         headPath = headPath.concat(this.destinationLedger)
@@ -124,7 +124,7 @@ class Route {
         // N2 !== D2, so include N2:
         headPath = headPath.concat(tailRoute.nextLedger)
       }
-      tailRoute.paths.map(tailPath => {
+      tailRoute.paths.map((tailPath) => {
         havePaths[ JSON.stringify(headPath.concat(tailPath)) ] = true
       })
     })
@@ -197,7 +197,7 @@ class Route {
     return omitUndefined({
       source_ledger: this.sourceLedger,
       destination_ledger: this.destinationLedger,
-      points: this.getPoints(),
+      points: this.curve.toBuffer().toString('base64'),
       min_message_window: this.minMessageWindow,
       source_account: this.sourceAccount,
       added_during_epoch: this.addedDuringEpoch,
@@ -233,6 +233,7 @@ function dataToRoute (data, currentEpoch) {
     sourceLedger: data.source_ledger,
     nextLedger: data.destination_ledger,
     minMessageWindow: data.min_message_window,
+    expiresAt: data.expires_at,
     isLocal: false,
     sourceAccount: data.source_account,
     destinationAccount: data.destination_account,
