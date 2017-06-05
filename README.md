@@ -58,5 +58,6 @@ Returns whether or not a new route was created (updates don't count).
 #### `tables.removeLedger(ledger)`
 #### `tables.removeExpiredRoutes()`
 #### `tables.toJSON(maxPoints) ⇒ RouteData[]`
+#### `tables.getLocalRoute(ledgerA, ledgerB) ⇒ Route`
 #### `tables.findBestHopForDestinationAmount(ledgerA, ledgerC, finalAmount) ⇒ Hop`
 #### `tables.findBestHopForSourceAmount(ledgerA, ledgerC, sourceAmount) ⇒ Hop`
