@@ -64,7 +64,7 @@ class RoutingTables {
 
   /**
    * Given a `route` B→C, create a route A→C for each source ledger A with a
-   * local route to B.
+   * local route to B, unless A == B.
    *
    * @param {Route|RouteData} _route from ledger B→C
    * @returns {Boolean} whether or not a new route was added
@@ -73,6 +73,9 @@ class RoutingTables {
     const route = Route.fromData(_route, this.currentEpoch)
     let added = false
     this.eachSource((tableFromA, ledgerA) => {
+      if (ledgerA === _route.sourceLedger) { // don't add loopback routes
+        return
+      }
       added = this._addRouteFromSource(tableFromA, ledgerA, route, noExpire) || added
     })
     if (added) {
