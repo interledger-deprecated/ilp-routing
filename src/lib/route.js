@@ -21,7 +21,9 @@ class Route {
    * @param {String[][]} paths - possible lists of hops inbetween nextLedger and destinationLedger
    */
   constructor (curve, info, paths = [ [] ]) {
-    this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
+    if (curve) {
+      this.curve = curve instanceof LiquidityCurve ? curve : new LiquidityCurve(curve)
+    }
     this.sourceLedger = info.sourceLedger
     this.nextLedger = info.nextLedger
     this.destinationLedger = info.destinationLedger || info.nextLedger
@@ -48,16 +50,37 @@ class Route {
   }
 
   // Proxy some functions to the LiquidityCurve.
-  amountAt (x) { return this.curve.amountAt(x) }
-  amountReverse (y) { return this.curve.amountReverse(y) }
-  getPoints () { return this.curve.getPoints() }
+  amountAt (x) { return this.curve && this.curve.amountAt(x) }
+  amountReverse (y) { return this.curve && this.curve.amountReverse(y) }
+  getPoints () { return this.curve && this.curve.getPoints() }
+
+  maxPathLength () {
+    let max = 0
+    for (let i = 0; i < this.paths.length; i++) {
+      if (this.paths[i].length > max) {
+        max = this.paths[i].length
+      }
+    }
+    // note that the source ledger, next ledger, and destination ledger
+    // are not included in this.paths, so for instance a path:
+    // * localLedger -> trustLine -> destinationLedger has this.paths === [ [] ], and path length 2
+    // * localLedger -> trustLine -> anotherTrustLine -> destinationLedger has this.paths === [ ['anotherTrustLine'] ] and path length 3
+    return max + 2
+  }
 
   /**
    * @param {Route} alternateRoute
    * @returns {Route}
    */
   combine (alternateRoute) {
-    const combinedCurve = this.curve.combine(alternateRoute.curve)
+    // only combine with alternate route if the path lengths are the same
+    if (alternateRoute.maxPathLength() < this.maxPathLength()) {
+      return alternateRoute
+    }
+    if (alternateRoute.maxPathLength() > this.maxPathLength()) {
+      return this
+    }
+    const combinedCurve = this.curve && alternateRoute.curve && this.curve.combine(alternateRoute.curve)
     const havePath = {}
 
     for (let list of [this.paths, alternateRoute.paths]) {
@@ -85,9 +108,10 @@ class Route {
   join (tailRoute, expiryDuration, addedDuringEpoch) {
     // Make sure the routes are actually adjacent, and check for loops:
     if (!canJoin(this, tailRoute)) return
-
-    const joinedCurve = this.curve.join(tailRoute.curve)
-
+    let joinedCurve
+    if (this.curve && tailRoute.curve) {
+      joinedCurve = this.curve.join(tailRoute.curve)
+    }
     // Example:
     // this = {
     //   sourceLedger: S1,
@@ -147,7 +171,7 @@ class Route {
    * @returns {Route}
    */
   shiftX (dx) {
-    return new Route(this.curve.shiftX(dx), this, this.paths)
+    return new Route(this.curve && this.curve.shiftX(dx), this, this.paths)
   }
 
   /**
@@ -155,7 +179,7 @@ class Route {
    * @returns {Route}
    */
   shiftY (dy) {
-    return new Route(this.curve.shiftY(dy), this, this.paths)
+    return new Route(this.curve && this.curve.shiftY(dy), this, this.paths)
   }
 
   /**
@@ -163,7 +187,7 @@ class Route {
    * @returns {Route}
    */
   simplify (maxPoints) {
-    return new Route(this.curve.simplify(maxPoints), {
+    return new Route(this.curve && this.curve.simplify(maxPoints), {
       sourceLedger: this.sourceLedger,
       destinationLedger: this.destinationLedger,
       minMessageWindow: this.minMessageWindow,
@@ -197,7 +221,7 @@ class Route {
     return omitUndefined({
       source_ledger: this.sourceLedger,
       destination_ledger: this.destinationLedger,
-      points: this.curve.toBuffer().toString('base64'),
+      points: this.curve && this.curve.toBuffer().toString('base64'),
       min_message_window: this.minMessageWindow,
       source_account: this.sourceAccount,
       added_during_epoch: this.addedDuringEpoch,

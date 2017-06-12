@@ -74,12 +74,33 @@ describe('Route', function () {
 
   describe('combine', function () {
     const route1 = new Route([[0, 0], [100, 100]], Object.assign({ minMessageWindow: 1 }, hopsABC), [['path1.']])
-    const route2 = new Route([[0, 0], [50, 60]], Object.assign({ minMessageWindow: 2 }, hopsADC), [['path2a1.', 'path2a2.'], ['path2b.']])
+    const route2 = new Route([[0, 0], [50, 60]], Object.assign({ minMessageWindow: 2 }, hopsADC), [['path2a.'], ['path2b.']])
+    const route3 = new Route([[0, 0], [50, 60]], Object.assign({ minMessageWindow: 2 }, hopsADC), [['path3a1.', 'path3a2.'], ['path3b.']])
     const combinedRoute = route1.combine(route2)
+    const combinedFirstLonger = route3.combine(route1)
+    const combinedSecondLonger = route1.combine(route3)
 
     it('combines the curves', function () {
       assert.deepEqual(combinedRoute.getPoints(),
         [[0, 0], [50, 60], [60, 60], [100, 100]])
+    })
+
+    it('picks second if first is longer', function () {
+      assert.deepEqual(combinedFirstLonger.getPoints(),
+        [[0, 0], [100, 100]])
+      assert.equal(combinedFirstLonger.sourceLedger, ledgerA)
+      assert.equal(combinedFirstLonger.nextLedger, ledgerB)
+      assert.equal(combinedFirstLonger.destinationLedger, ledgerC)
+      assert.deepEqual(combinedFirstLonger.paths, [ [ 'path1.' ] ])
+    })
+
+    it('picks first if second is longer', function () {
+      assert.deepEqual(combinedSecondLonger.getPoints(),
+        [[0, 0], [100, 100]])
+      assert.equal(combinedSecondLonger.sourceLedger, ledgerA)
+      assert.equal(combinedSecondLonger.nextLedger, ledgerB)
+      assert.equal(combinedSecondLonger.destinationLedger, ledgerC)
+      assert.deepEqual(combinedSecondLonger.paths, [ [ 'path1.' ] ])
     })
 
     it('only uses the boundary ledgers in "hops"', function () {
@@ -88,7 +109,7 @@ describe('Route', function () {
       assert.equal(combinedRoute.destinationLedger, ledgerC)
       assert.deepEqual(combinedRoute.paths, [
         [ 'path1.' ],
-        [ 'path2a1.', 'path2a2.' ],
+        [ 'path2a.' ],
         [ 'path2b.' ]
       ])
     })
