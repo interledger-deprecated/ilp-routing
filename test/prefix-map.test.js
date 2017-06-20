@@ -58,6 +58,14 @@ describe('PrefixMap', function () {
       assert.deepEqual(this.map.resolve('baz'), {any: 1})
       assert.deepEqual(this.map.resolve(''), {any: 1})
     })
+
+    it('returns the longest prefix that matches', function () {
+      this.map.insert('', {foo: 1})
+      this.map.insert('a.b.c.', {foo: 2})
+
+      assert.deepEqual(this.map.resolve('a.b.c.d.'), {foo: 2})
+      assert.deepEqual(this.map.resolve('a.'), {foo: 1})
+    })
   })
 
   describe('get', function () {
@@ -95,6 +103,39 @@ describe('PrefixMap', function () {
       this.map.insert('foo', {foo: 2})
       assert.deepEqual(this.map.prefixes, ['foo'])
       assert.deepEqual(this.map.items, {foo: {foo: 2}})
+    })
+
+    it('sorts first by length', function () {
+      this.map.insert('a.b.c.', {foo: 1})
+      this.map.insert('z.', {foo: 2})
+      assert.deepEqual(this.map.prefixes, ['a.b.c.', 'z.'])
+    })
+
+    it('sorts secondarily by alphabetical order', function () {
+      this.map.insert('a.b.c.', {foo: 1})
+      this.map.insert('a.z.c.', {foo: 3})
+      this.map.insert('a.f.c.', {foo: 2})
+      assert.deepEqual(this.map.prefixes, ['a.z.c.', 'a.f.c.', 'a.b.c.'])
+    })
+
+    it('one more test for good measure cause this is really important', function () {
+      this.map.insert('a.b.c.', {foo: 1})
+      this.map.insert('z.', {foo: 3})
+      this.map.insert('a.f.c.', {foo: 2})
+      this.map.insert('z.b.a.', {foo: 3})
+      this.map.insert('z.b.', {foo: 3})
+      this.map.insert('z.a.', {foo: 3})
+      this.map.insert('a.z.c.', {foo: 0})
+
+      assert.deepEqual(this.map.prefixes, ['z.b.a.', 'a.z.c.', 'a.f.c.', 'a.b.c.', 'z.b.', 'z.a.', 'z.'])
+    })
+
+    it('works with empty prefixes', function () {
+      this.map.insert('a.b.c.', {foo: 1})
+      this.map.insert('', {foo: 2})
+      this.map.insert('z.', {foo: 3})
+
+      assert.deepEqual(this.map.prefixes, ['a.b.c.', 'z.', ''])
     })
   })
 

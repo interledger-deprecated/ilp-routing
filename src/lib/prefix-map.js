@@ -46,9 +46,19 @@ class PrefixMap {
     }
   }
 
+  /**
+   * Insert the prefix while keeping the prefixes sorted first in length order
+   * and if two prefixes are the same length, sort them in reverse alphabetical order
+   */
   insert (prefix, item) {
     if (!this.items[prefix]) {
-      const index = findIndex(this.prefixes, (e) => { return prefix.length > e.length || prefix > e })
+      const index = findIndex(this.prefixes, (e) => {
+        if (prefix.length === e.length) {
+          return prefix > e
+        }
+        return prefix.length > e.length
+      })
+
       if (index === -1) {
         this.prefixes.push(prefix)
       } else {
