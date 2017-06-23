@@ -31,7 +31,7 @@ class Route {
     // if targetPrefix is specified, then destinations matching 'targetPrefix'
     // will follow this route, rather than destinations matching
     // 'destinationLedger'
-    this.targetPrefix = info.targetPrefix || this.destinationLedger
+    this.targetPrefix = info.targetPrefix == null ? this.destinationLedger : info.targetPrefix
 
     this.minMessageWindow = info.minMessageWindow
     this.expiresAt = info.expiresAt

@@ -35,6 +35,28 @@ class RoutingTable {
     return false
   }
 
+  /**
+   * Compute a curve quote's `appliesToPrefix`, which is the shortest prefix
+   * that uniquely matches the target.
+   *
+   * @param {IlpAddress} routePrefix
+   * @param {IlpAddress} destinationAccount
+   * @returns {IlpAddress}
+   */
+  getAppliesToPrefix (routePrefix, destinationAccount) {
+    // Use `routePrefix` as the initial `appliesToPrefix`, and extend it as
+    // needed if it is too general.
+    let appliesToPrefix = routePrefix
+    this.destinations.each((routes, targetPrefix) => {
+      if (targetPrefix === routePrefix) return
+      if (targetPrefix.startsWith(appliesToPrefix)) {
+        appliesToPrefix = destinationAccount.slice(
+          0, getPrefixLength(targetPrefix, appliesToPrefix) + 1)
+      }
+    })
+    return appliesToPrefix
+  }
+
   findBestHopForSourceAmount (destination, sourceAmount) {
     const routes = this.destinations.resolve(destination)
     if (!routes) {
@@ -100,6 +122,14 @@ class RoutingTable {
       return undefined
     }
   }
+}
+
+function getPrefixLength (str1, str2) {
+  const length = Math.min(str1.length, str2.length)
+  for (let i = 0; i < length; i++) {
+    if (str1[i] !== str2[i]) return i
+  }
+  return length
 }
 
 module.exports = RoutingTable

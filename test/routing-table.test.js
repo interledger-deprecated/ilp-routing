@@ -33,6 +33,25 @@ describe('RoutingTable', function () {
     })
   })
 
+  describe('getAppliesToPrefix', function () {
+    beforeEach(function () {
+      this.table = new RoutingTable()
+      this.table.addRoute('abc', 'abc.mark', new Route([], {}))
+      this.table.addRoute('a', 'a.mary', new Route([], {}))
+      this.table.addRoute('', 'gateway.martin', new Route([], {}))
+    })
+
+    it('returns the shortest prefix that uniquely matches the target', function () {
+      assert.equal(this.table.getAppliesToPrefix('abc', 'abc.carl'), 'abc')
+      assert.equal(this.table.getAppliesToPrefix('ab', 'ab.carl'), 'ab.')
+      assert.equal(this.table.getAppliesToPrefix('ab', 'abd.carl'), 'abd')
+
+      assert.equal(this.table.getAppliesToPrefix('', 'random.carl'), 'r')
+      assert.equal(this.table.getAppliesToPrefix('a', 'ad.carl'), 'ad')
+      assert.equal(this.table.getAppliesToPrefix('abc', 'abcd.carl'), 'abc')
+    })
+  })
+
   describe('findBestHopForSourceAmount', function () {
     it('returns the best hop', function () {
       const table = new RoutingTable()
