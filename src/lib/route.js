@@ -31,6 +31,7 @@ class Route {
     // if targetPrefix is specified, then destinations matching 'targetPrefix'
     // will follow this route, rather than destinations matching
     // 'destinationLedger'
+    // See https://github.com/interledgerjs/ilp-routing/issues/49
     this.targetPrefix = info.targetPrefix == null ? this.destinationLedger : info.targetPrefix
 
     this.minMessageWindow = info.minMessageWindow

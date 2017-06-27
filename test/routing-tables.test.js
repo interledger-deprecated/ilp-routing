@@ -172,9 +172,9 @@ describe('RoutingTables', function () {
     })
   })
 
-  describe('getLocalRoute', function () {
+  describe('getLocalPairRoute', function () {
     it('returns the matching local route', function () {
-      assertSubset(this.tables.getLocalRoute(ledgerA, ledgerB), {
+      assertSubset(this.tables.getLocalPairRoute(ledgerA, ledgerB), {
         sourceLedger: ledgerA,
         nextLedger: ledgerB,
         destinationLedger: ledgerB
@@ -189,7 +189,7 @@ describe('RoutingTables', function () {
         min_message_window: 1,
         points: [ [0, 0], [50, 60] ]
       })
-      assert.strictEqual(this.tables.getLocalRoute(ledgerA, ledgerC), undefined)
+      assert.strictEqual(this.tables.getLocalPairRoute(ledgerA, ledgerC), undefined)
     })
   })
 

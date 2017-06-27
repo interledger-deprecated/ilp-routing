@@ -38,20 +38,25 @@ class RoutingTable {
   /**
    * Compute a curve quote's `appliesToPrefix`, which is the shortest prefix
    * that uniquely matches the target.
+   * If no prefix uniquely matches the target, return the entire `destinationAddress`.
    *
    * @param {IlpAddress} routePrefix
-   * @param {IlpAddress} destinationAccount
+   * @param {IlpAddress} destinationAddress
    * @returns {IlpAddress}
    */
-  getAppliesToPrefix (routePrefix, destinationAccount) {
-    // Use `routePrefix` as the initial `appliesToPrefix`, and extend it as
-    // needed if it is too general.
+  getAppliesToPrefix (routePrefix, destinationAddress) {
+    // Use `routePrefix` as the initial `appliesToPrefix`.
+    // Extend it if it is too general.
     let appliesToPrefix = routePrefix
     this.destinations.each((routes, targetPrefix) => {
       if (targetPrefix === routePrefix) return
-      if (targetPrefix.startsWith(appliesToPrefix)) {
-        appliesToPrefix = destinationAccount.slice(
-          0, getPrefixLength(targetPrefix, appliesToPrefix) + 1)
+      while (targetPrefix.startsWith(appliesToPrefix)) {
+        const nextSegmentEnd = destinationAddress.indexOf('.', appliesToPrefix.length)
+        if (nextSegmentEnd === -1) {
+          appliesToPrefix = destinationAddress
+        } else {
+          appliesToPrefix = destinationAddress.slice(0, nextSegmentEnd + 1)
+        }
       }
     })
     return appliesToPrefix
@@ -122,14 +127,6 @@ class RoutingTable {
       return undefined
     }
   }
-}
-
-function getPrefixLength (str1, str2) {
-  const length = Math.min(str1.length, str2.length)
-  for (let i = 0; i < length; i++) {
-    if (str1[i] !== str2[i]) return i
-  }
-  return length
 }
 
 module.exports = RoutingTable
