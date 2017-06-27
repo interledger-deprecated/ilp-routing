@@ -167,6 +167,15 @@ describe('LiquidityCurve', function () {
       assert.equal(joinedCurve.amountAt(200), 60)
     })
 
+    it('creates an empty curve if curve1 max output < curve2 min input', function () {
+      const curve1 = new LiquidityCurve([ [1, 1], [100, 100] ])
+      const curve2 = new LiquidityCurve([ [1000, 0], [1000000000, 100000] ])
+      const joinedCurve = curve1.join(curve2)
+
+      assert.deepStrictEqual(joinedCurve.getPoints(),
+        [ ])
+    })
+
     it('truncates the domain as necessary', function () {
       const curve1 = new LiquidityCurve([ [0, 0], [50, 100] ])
       const curve2 = new LiquidityCurve([ [0, 0], [200, 300] ])
