@@ -69,25 +69,19 @@ describe('RoutingTables', function () {
 
       // A → B → C
       assertSubset(this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 20), {
-        destinationLedger: ledgerB,
-        destinationCreditAccount: ledgerB + 'mark',
-        finalAmount: '20',
-        minMessageWindow: 2
+        bestHop: ledgerB + 'mark',
+        bestValue: '20'
       })
       // A → B → C → D → E
       // It can't just skip from A→D, because it isn't a pair, even though its components are local.
       assertSubset(this.tables.findBestHopForSourceAmount(ledgerA, ledgerE, 20), {
-        destinationLedger: ledgerB,
-        destinationCreditAccount: ledgerB + 'mark',
-        finalAmount: '80',
-        minMessageWindow: 4
+        bestHop: ledgerB + 'mark',
+        bestValue: '80'
       })
       // C → D → E
       assertSubset(this.tables.findBestHopForSourceAmount(ledgerC, ledgerE, 20), {
-        destinationLedger: ledgerD,
-        destinationCreditAccount: ledgerD + 'mary',
-        finalAmount: '80',
-        minMessageWindow: 2
+        bestHop: ledgerD + 'mary',
+        bestValue: '80'
       })
     })
   })
@@ -170,30 +164,51 @@ describe('RoutingTables', function () {
         }
       ])
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, 100),
         { bestHop: markB, bestValue: '50' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 200),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, 200),
         { bestHop: markB, bestValue: '100' })
     })
   })
 
-  describe('_findBestHopForSourceAmount', function () {
+  describe('getLocalPairRoute', function () {
+    it('returns the matching local route', function () {
+      assertSubset(this.tables.getLocalPairRoute(ledgerA, ledgerB), {
+        sourceLedger: ledgerA,
+        nextLedger: ledgerB,
+        destinationLedger: ledgerB
+      })
+    })
+
+    it('returns undefined if no local route matches', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      })
+      assert.strictEqual(this.tables.getLocalPairRoute(ledgerA, ledgerC), undefined)
+    })
+  })
+
+  describe('findBestHopForSourceAmount', function () {
     it('finds the best next hop when there is one route', function () {
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 0),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, 0),
         { bestHop: markB, bestValue: '0' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, 100),
         { bestHop: markB, bestValue: '50' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 200),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, 200),
         { bestHop: markB, bestValue: '100' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerB, 300),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, 300),
         { bestHop: markB, bestValue: '100' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerB, ledgerA, 100),
+        this.tables.findBestHopForSourceAmount(ledgerB, ledgerA, 100),
         { bestHop: markA, bestValue: '200' })
     })
 
@@ -206,7 +221,7 @@ describe('RoutingTables', function () {
         points: [ [0, 0], [200, 100] ]
       })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'mary', bestValue: '25' })
     })
 
@@ -226,33 +241,33 @@ describe('RoutingTables', function () {
         points: [ [0, 0], [100, 100] ]
       })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'mary', bestValue: '60' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 150),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 150),
         { bestHop: ledgerB + 'martin', bestValue: '75' })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 200),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 200),
         { bestHop: ledgerB + 'martin', bestValue: '100' })
     })
   })
 
-  describe('_findBestHopForDestinationAmount', function () {
+  describe('findBestHopForDestinationAmount', function () {
     it('finds the best next hop when there is one route', function () {
       assertSubset(
-        this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 0),
+        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerB, 0),
         { bestHop: markB, bestCost: '0' })
       assertSubset(
-        this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 50),
+        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerB, 50),
         { bestHop: markB, bestCost: '100' })
       assertSubset(
-        this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 100),
+        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerB, 100),
         { bestHop: markB, bestCost: '200' })
       assert.equal(
-        this.tables._findBestHopForDestinationAmount(ledgerA, ledgerB, 150),
+        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerB, 150),
         undefined)
       assertSubset(
-        this.tables._findBestHopForDestinationAmount(ledgerB, ledgerA, 200),
+        this.tables.findBestHopForDestinationAmount(ledgerB, ledgerA, 200),
         { bestHop: markA, bestCost: '100' })
     })
   })
@@ -334,11 +349,11 @@ describe('RoutingTables', function () {
         points: [ [0, 0], [100, 100] ]
       })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'mary', bestValue: '60' })
       this.tables.invalidateConnector(ledgerB + 'mary')
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'martin' })
       let lll = this.tables.invalidateConnector(ledgerB + 'martin')
       assert.deepStrictEqual(lll, [ledgerC])
@@ -369,11 +384,11 @@ describe('RoutingTables', function () {
         points: [ [0, 0], [100, 100] ]
       })
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'mary', bestValue: '60' })
       this.tables.invalidateConnectorsRoutesTo(ledgerB + 'mary', ledgerD)
       assertSubset(
-        this.tables._findBestHopForSourceAmount(ledgerA, ledgerC, 100),
+        this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'mary', bestValue: '60' })
     })
   })
@@ -545,114 +560,6 @@ describe('RoutingTables', function () {
       assert.throws(() => {
         this.tables.toJSON(-5)
       }, /TypeError: RoutingTables#toJSON maxPoints must be a positive number/)
-    })
-  })
-
-  describe('findBestHopForDestinationAmount', function () {
-    it('finds the best route when there is one path', function () {
-      this.tables.addRoute({
-        source_ledger: ledgerB,
-        destination_ledger: ledgerC,
-        min_message_window: 1,
-        source_account: ledgerB + 'mary',
-        points: [ [0, 0], [200, 100] ]
-      })
-      assert.deepEqual(
-        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerC, '25'),
-        {
-          isFinal: false,
-          isLocal: false,
-          sourceLedger: ledgerA,
-          sourceAmount: '100',
-          destinationLedger: ledgerB,
-          destinationAmount: '50',
-          destinationCreditAccount: ledgerB + 'mary',
-          finalLedger: ledgerC,
-          finalAmount: '25',
-          liquidityCurve: [
-            [ 0, 0 ],
-            [ 200, 50 ]
-          ],
-          minMessageWindow: 2
-        })
-    })
-
-    it('finds the best route when there is one hop', function () {
-      assert.deepStrictEqual(
-        this.tables.findBestHopForDestinationAmount(ledgerA + 'alice', ledgerB + 'bob', '50'),
-        {
-          isFinal: true,
-          isLocal: true,
-          sourceLedger: ledgerA,
-          sourceAmount: '100',
-          destinationLedger: ledgerB,
-          destinationAmount: '50',
-          destinationCreditAccount: null,
-          finalLedger: ledgerB,
-          finalAmount: '50',
-          minMessageWindow: 1,
-          liquidityCurve: [
-            [ 0, 0 ],
-            [ 200, 100 ]
-          ],
-          additionalInfo: {rate_info: '0.5'}
-        })
-    })
-
-    it('finds the best route when there is a remote path', function () {
-      this.tables.addRoute({
-        source_ledger: ledgerB,
-        destination_ledger: ledgerC,
-        min_message_window: 1,
-        source_account: ledgerB + 'mary',
-        points: [ [0, 0], [200, 100] ]
-      })
-      assert.deepEqual(
-        this.tables.findBestHopForDestinationAmount(ledgerA, ledgerC + 'subledger1.bob', '25'),
-        {
-          isFinal: false,
-          isLocal: false,
-          sourceLedger: ledgerA,
-          sourceAmount: '100',
-          destinationLedger: ledgerB,
-          destinationAmount: '50',
-          destinationCreditAccount: ledgerB + 'mary',
-          finalLedger: ledgerC,
-          finalAmount: '25',
-          liquidityCurve: [
-            [ 0, 0 ],
-            [ 200, 50 ]
-          ],
-          minMessageWindow: 2
-        })
-    })
-  })
-
-  describe('findBestHopForSourceAmount', function () {
-    it('finds the best route when there is one hop', function () {
-      assert.deepStrictEqual(
-        this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, '100'),
-        {
-          isFinal: true,
-          isLocal: true,
-          sourceLedger: ledgerA,
-          sourceAmount: '100',
-          destinationLedger: ledgerB,
-          destinationAmount: '50',
-          destinationCreditAccount: null,
-          finalLedger: ledgerB,
-          finalAmount: '50',
-          minMessageWindow: 1,
-          liquidityCurve: [
-            [ 0, 0 ],
-            [ 200, 100 ]
-          ],
-          additionalInfo: {rate_info: '0.5'}
-        })
-    })
-
-    it('always returns a string integer destinationAmount', function () {
-      assert.equal(this.tables.findBestHopForSourceAmount(ledgerA, ledgerB, '25').destinationAmount, '12')
     })
   })
 })

@@ -35,6 +35,33 @@ class RoutingTable {
     return false
   }
 
+  /**
+   * Compute a curve quote's `appliesToPrefix`, which is the shortest prefix
+   * that uniquely matches the target.
+   * If no prefix uniquely matches the target, return the entire `destinationAddress`.
+   *
+   * @param {IlpAddress} routePrefix
+   * @param {IlpAddress} destinationAddress
+   * @returns {IlpAddress}
+   */
+  getAppliesToPrefix (routePrefix, destinationAddress) {
+    // Use `routePrefix` as the initial `appliesToPrefix`.
+    // Extend it if it is too general.
+    let appliesToPrefix = routePrefix
+    this.destinations.each((routes, targetPrefix) => {
+      if (targetPrefix === routePrefix) return
+      while (targetPrefix.startsWith(appliesToPrefix)) {
+        const nextSegmentEnd = destinationAddress.indexOf('.', appliesToPrefix.length)
+        if (nextSegmentEnd === -1) {
+          appliesToPrefix = destinationAddress
+        } else {
+          appliesToPrefix = destinationAddress.slice(0, nextSegmentEnd + 1)
+        }
+      }
+    })
+    return appliesToPrefix
+  }
+
   findBestHopForSourceAmount (destination, sourceAmount) {
     const routes = this.destinations.resolve(destination)
     if (!routes) {

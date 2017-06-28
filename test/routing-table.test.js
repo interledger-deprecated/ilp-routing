@@ -33,6 +33,30 @@ describe('RoutingTable', function () {
     })
   })
 
+  describe('getAppliesToPrefix', function () {
+    beforeEach(function () {
+      this.table = new RoutingTable()
+      this.table.addRoute('a.b.c.', 'abc.mark', new Route([], {}))
+      this.table.addRoute('a.', 'a.mary', new Route([], {}))
+      this.table.addRoute('', 'gateway.martin', new Route([], {}))
+    })
+
+    it('returns the shortest prefix that uniquely matches the destination', function () {
+      assert.equal(this.table.getAppliesToPrefix('a.b.c.', 'a.b.c.carl'), 'a.b.c.')
+      assert.equal(this.table.getAppliesToPrefix('a.b.c.', 'a.b.c.d.carl'), 'a.b.c.')
+
+      assert.equal(this.table.getAppliesToPrefix('a.', 'a.d.carl'), 'a.d.')
+      assert.equal(this.table.getAppliesToPrefix('a.', 'a.b.carl'), 'a.b.carl')
+      assert.equal(this.table.getAppliesToPrefix('a.', 'a.b.d.carl'), 'a.b.d.')
+      assert.equal(this.table.getAppliesToPrefix('', 'random.carl'), 'random.')
+    })
+
+    it('returns the full address if the destination has no unique prefix', function () {
+      this.table.addRoute('a.b.c.def.', 'a.b.c.def.mark', new Route([], {}))
+      assert.equal(this.table.getAppliesToPrefix('a.b.c.', 'a.b.c.carl'), 'a.b.c.carl')
+    })
+  })
+
   describe('findBestHopForSourceAmount', function () {
     it('returns the best hop', function () {
       const table = new RoutingTable()

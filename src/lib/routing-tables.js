@@ -1,9 +1,6 @@
 'use strict'
 
 const debug = require('debug')('ilp-routing:routing-tables')
-const isUndefined = require('lodash/fp/isUndefined')
-const omitUndefined = require('lodash/fp/omitBy')(isUndefined)
-
 const PrefixMap = require('./prefix-map')
 const Route = require('./route')
 const RoutingTable = require('./routing-table')
@@ -90,11 +87,11 @@ class RoutingTables {
     let added = false
 
     // Don't create local route A→B→C if local route A→C already exists.
-    if (routeFromBToC.isLocal && this._getLocalPairRoute(ledgerA, ledgerC)) {
+    if (routeFromBToC.isLocal && this.getLocalPairRoute(ledgerA, ledgerC)) {
       return
     }
     // Don't create A→B→C when A→B is not a local pair.
-    const routeFromAToB = this._getLocalPairRoute(ledgerA, ledgerB)
+    const routeFromAToB = this.getLocalPairRoute(ledgerA, ledgerB)
     if (!routeFromAToB) {
       return
     }
@@ -224,8 +221,13 @@ class RoutingTables {
     return routes
   }
 
-  _getLocalPairRoute (ledgerA, ledgerB) {
-    return this._getRoute(ledgerA, ledgerB, PAIR)
+  /**
+   * @param {IlpAddress} sourceLedger
+   * @param {IlpAddress} nextLedger
+   * @returns {Route}
+   */
+  getLocalPairRoute (sourceLedger, nextLedger) {
+    return this._getRoute(sourceLedger, nextLedger, PAIR)
   }
 
   _getRoute (ledgerA, ledgerB, nextHop) {
@@ -235,9 +237,25 @@ class RoutingTables {
   }
 
   /**
-   * Find the best intermediate ledger (`nextLedger`) to use after `sourceLedger` on
-   * the way to `finalLedger`.
-   * This connector must have `[sourceLedger, nextLedger]` as a pair.
+   * @param {IlpAddress} sourceAddress
+   * @param {IlpAddress} finalAddress
+   * @param {String} sourceAmount
+   * @returns {Object}
+   */
+  findBestHopForSourceAmount (sourceAddress, finalAddress, sourceAmount) {
+    debug('searching best hop from %s to %s for %s (by src amount)', sourceAddress, finalAddress, sourceAmount)
+    const table = this.sources.resolve(sourceAddress)
+    if (!table) {
+      debug('source %s is not in known sources: %s',
+        sourceAddress, Object.keys(this.sources.prefixes))
+      return undefined
+    }
+    return this._rewriteLocalHop(
+      table.findBestHopForSourceAmount(finalAddress, sourceAmount))
+  }
+
+  /**
+   * Find the best intermediate route to use after `sourceLedger` on the way to `finalLedger`.
    *
    * @param {IlpAddress} sourceAddress
    * @param {IlpAddress} finalAddress
@@ -245,93 +263,15 @@ class RoutingTables {
    * @returns {Object}
    */
   findBestHopForDestinationAmount (sourceAddress, finalAddress, finalAmount) {
-    const nextHop = this._findBestHopForDestinationAmount(sourceAddress, finalAddress, +finalAmount)
-    if (!nextHop) return
-    // sourceLedger is the longest known prefix of sourceAddress (likewise for
-    // finalLedger/finalAddress).
-    const sourceLedger = nextHop.bestRoute.sourceLedger
-    const finalLedger = nextHop.bestRoute.destinationLedger
-    const nextLedger = nextHop.bestRoute.nextLedger
-    const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
-    const isFinal = nextLedger === finalLedger
-    // CAUTION: The amount at the `destinationLedger` (or `finalLedger`) is confusingly
-    // called `finalAmount` here, but will be **renamed** to `destinationAmount` by
-    // https://github.com/interledgerjs/ilp-core/blob/v14.0.1/src/lib/core.js#L199
-    // As you can see, even more confusingly, this function does actually return a
-    // `destinationAmount` field, but that is a bit of a misnomer here.
-    // `nextAmount` would be a better name for that field, since it is the amount at
-    // the `nextLedger` (see `const routeFromAToB` above).
-    // It will be ignored by
-    // https://github.com/interledgerjs/ilp-core/blob/v14.0.1/src/lib/core.js#L199
-    // but I left it in, since it is being checked by the unit tests - MJ.
-    return omitUndefined({
-      isFinal: isFinal,
-      isLocal: nextHop.bestRoute.isLocal,
-      sourceLedger: sourceLedger,
-      sourceAmount: nextHop.bestCost && nextHop.bestCost.toString(),
-      destinationLedger: nextLedger,
-      destinationAmount: nextHop.bestCost && routeFromAToB.amountAt(nextHop.bestCost).toString(),
-      destinationCreditAccount: isFinal ? null : nextHop.bestHop,
-      finalLedger: finalLedger,
-      finalAmount: finalAmount, // CAUTION: this will be used as destinationAmount
-      minMessageWindow: nextHop.bestRoute.minMessageWindow,
-      liquidityCurve: nextHop.bestRoute.curve && nextHop.bestRoute.curve.getPoints(),
-      additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
-    })
-  }
-
-  /**
-   * @param {IlpAddress} sourceAddress
-   * @param {IlpAddress} finalAddress
-   * @param {String} sourceAmount
-   * @returns {Object}
-   */
-  findBestHopForSourceAmount (sourceAddress, finalAddress, sourceAmount) {
-    const nextHop = this._findBestHopForSourceAmount(sourceAddress, finalAddress, +sourceAmount)
-    if (!nextHop) return
-    const sourceLedger = nextHop.bestRoute.sourceLedger
-    const finalLedger = nextHop.bestRoute.destinationLedger
-    const nextLedger = nextHop.bestRoute.nextLedger
-    const routeFromAToB = this._getLocalPairRoute(sourceLedger, nextLedger)
-    const isFinal = nextLedger === finalLedger
-    return omitUndefined({
-      isFinal: isFinal,
-      isLocal: nextHop.bestRoute.isLocal,
-      sourceLedger: sourceLedger,
-      sourceAmount: sourceAmount,
-      destinationLedger: nextLedger,
-      destinationAmount: routeFromAToB.amountAt(+sourceAmount).toString(),
-      destinationCreditAccount: isFinal ? null : nextHop.bestHop,
-      finalLedger: finalLedger,
-      finalAmount: nextHop.bestValue,
-      minMessageWindow: nextHop.bestRoute.minMessageWindow,
-      liquidityCurve: nextHop.bestRoute.curve && nextHop.bestRoute.curve.getPoints(),
-      additionalInfo: isFinal ? nextHop.bestRoute.additionalInfo : undefined
-    })
-  }
-
-  _findBestHopForSourceAmount (source, destination, amount) {
-    debug('searching best hop from %s to %s for %s (by src amount)', source, destination, amount)
-    const table = this.sources.resolve(source)
+    debug('searching best hop from %s to %s for %s (by dst amount)', sourceAddress, finalAddress, finalAmount)
+    const table = this.sources.resolve(sourceAddress)
     if (!table) {
       debug('source %s is not in known sources: %s',
-        source, Object.keys(this.sources.prefixes))
+        sourceAddress, Object.keys(this.sources.prefixes))
       return undefined
     }
     return this._rewriteLocalHop(
-      table.findBestHopForSourceAmount(destination, amount))
-  }
-
-  _findBestHopForDestinationAmount (source, destination, amount) {
-    debug('searching best hop from %s to %s for %s (by dst amount)', source, destination, amount)
-    const table = this.sources.resolve(source)
-    if (!table) {
-      debug('source %s is not in known sources: %s',
-        source, Object.keys(this.sources.prefixes))
-      return undefined
-    }
-    return this._rewriteLocalHop(
-      table.findBestHopForDestinationAmount(destination, amount))
+      table.findBestHopForDestinationAmount(finalAddress, finalAmount))
   }
 
   _rewriteLocalHop (hop) {

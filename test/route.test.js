@@ -49,6 +49,16 @@ describe('Route', function () {
       assert.equal(route.destinationAccount, markC)
       assert.deepStrictEqual(route.additionalInfo, {foo: 'bar'})
     })
+
+    it('allows targetPrefix=""', function () {
+      const route = new Route([[0, 0], [100, 200]], Object.assign({
+        minMessageWindow: 3,
+        sourceAccount: markA,
+        destinationAccount: markC,
+        targetPrefix: ''
+      }, hopsABC))
+      assert.equal(route.targetPrefix, '')
+    })
   })
 
   describe('LiquidityCurve methods', function () {
