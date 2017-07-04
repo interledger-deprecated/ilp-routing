@@ -132,6 +132,15 @@ describe('LiquidityCurve', function () {
       assert.equal(combinedCurve.amountAt(70), 70)
     })
 
+    it('cleans up duplicate points', function () {
+      const curve1 = new LiquidityCurve([ [1, 0], [50000000001, 49800199999], [100000000000001, 49800199999] ])
+      const curve2 = new LiquidityCurve([ [2, 0], [50000000001, 49800199999], [100000000000001, 49800199999] ])
+      const combinedCurve = curve1.combine(curve2)
+
+      assert.deepStrictEqual(combinedCurve.getPoints(),
+        [ [1, 0], [2, 0], [50000000001, 49800199999], [100000000000001, 49800199999] ])
+    })
+
     it('ignores an empty curve', function () {
       const curve1 = new LiquidityCurve([ [0, 0], [50, 60] ])
       const curve2 = new LiquidityCurve([])
