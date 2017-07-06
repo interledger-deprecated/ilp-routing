@@ -11,7 +11,7 @@ class LiquidityCurve {
   constructor (data) {
     if (typeof data === 'string') {
       this.setData(Buffer.from(data, 'base64'))
-    } else if (data instanceof Array) { // Points (used for tests)
+    } else if (data instanceof Array) { // Points
       this.setData(serializePoints(data))
     } else { // Buffer
       this.setData(data)
@@ -158,8 +158,8 @@ class LiquidityCurve {
     if (endB[0].lt(endA[0])) pointsB = pointsB.concat([ [endA[0], endB[1]] ])
 
     const result = []
-    this._eachOverlappingSegment(pointsA, pointsB, (lineA, lineB) => {
-      const solution = intersectLineSegments(lineA, lineB)
+    this._eachOverlappingSegment(pointsA, pointsB, (pA1, pA2, pB1, pB2) => {
+      const solution = intersectLineSegments(pA1, pA2, pB1, pB2)
       if (solution) result.push(solution)
     })
     return result
@@ -173,12 +173,14 @@ class LiquidityCurve {
   _eachOverlappingSegment (pointsA, pointsB, each) {
     let cursor = 1
     for (let indexA = 1; indexA < pointsA.length; indexA++) {
-      const lineA = toLine(pointsA[indexA - 1], pointsA[indexA])
+      const p1 = pointsA[indexA - 1]
+      const p2 = pointsA[indexA]
       for (let indexB = cursor; indexB < pointsB.length; indexB++) {
-        const lineB = toLine(pointsB[indexB - 1], pointsB[indexB])
-        if (lineB.x1.lt(lineA.x0)) { cursor++; continue }
-        if (lineA.x1.lt(lineB.x0)) break
-        each(lineA, lineB)
+        const p3 = pointsB[indexB - 1]
+        const p4 = pointsB[indexB]
+        if (p4[0].lt(p1[0])) { cursor++; continue }
+        if (p2[0].lt(p3[0])) break
+        each(p1, p2, p3, p4)
       }
     }
   }
@@ -256,51 +258,53 @@ class LiquidityCurve {
 
 function omitInfinity (point) { return point[0].toString() !== 'Infinity' }
 function comparePoints (a, b) { return a[0].comparedTo(b[0]) }
-function roundCoords (point) { return [ point[0].round(), point[1].round() ] }
+function roundCoords (point) { return [ point[0].floor(), point[1].floor() ] }
 
 function omitDuplicates (point, i, points) {
   return i === 0 || !point[0].eq(points[i - 1][0])
 }
 
 /**
- *      y₁ - y₀       x₁y₀ - x₀y₁
- * y = ───────── x + ───────────── = mx + b
- *      x₁ - x₀         x₁ - x₀
+ * Intersect two line segments using determinants. This is more precise than
+ * intersecting the lines using slopes and y-intercepts -- fewer fractions.
+ *
+ * See: http://mathworld.wolfram.com/Line-LineIntersection.html
  */
-function toLine (pA, pB) {
-  const x0 = pA[0]; const x1 = pB[0]
-  const y0 = pA[1]; const y1 = pB[1]
-  const dx = x1.sub(x0)
-  const dy = y1.sub(y0)
-  const m = dx.isZero() ? null : dy.div(dx)
-  const x1y0 = x1.mul(y0)
-  const x0y1 = x0.mul(y1)
-  const b = x1y0.sub(x0y1).div(dx)
-  return {m, b, x0, x1}
+function intersectLineSegments (p1, p2, p3, p4) {
+  const denominator = determinant(
+    p1[0].sub(p2[0]), p1[1].sub(p2[1]),
+    p3[0].sub(p4[0]), p3[1].sub(p4[1]))
+  const topLeft = determinant(
+    p1[0], p1[1],
+    p2[0], p2[1])
+  const bottomLeft = determinant(
+    p3[0], p3[1],
+    p4[0], p4[1])
+
+  // Parallel lines.
+  if (denominator.isZero()) return
+  const x = determinant(
+    topLeft, p1[0].sub(p2[0]),
+    bottomLeft, p3[0].sub(p4[0])
+  ).div(denominator)
+  // Ensure that the intersection is within the line segments, not just the lines.
+  if (x.lt(p1[0]) || p2[0].lt(x)) return
+  if (x.lt(p3[0]) || p4[0].lt(x)) return
+  const y = determinant(
+    topLeft, p1[1].sub(p2[1]),
+    bottomLeft, p3[1].sub(p4[1])
+  ).div(denominator)
+  if (y.lt(p1[1]) || p2[1].lt(y)) return
+  if (y.lt(p3[1]) || p4[1].lt(y)) return
+  return [x, y]
 }
 
 /**
- * y = m₀x + b₀ = m₁x + b₁
- *
- *      b₁ - b₀
- * x = ───────── ; line0.x₀ ≤ x ≤ line0.x₁ and line1.x₀ ≤ x ≤ line1.x₁
- *      m₀ - m₁
+ * │a  b│
+ * │c  d│ = ad - bc
  */
-function intersectLineSegments (line0, line1) {
-  if (line0.m === null || line1.m === null) return
-  if (line0.m.eq(line1.m)) return
-  // Ensure that if the lines intersect, it is in quadrant I.
-  if (line0.m.gt(line1.m) && line0.b.gt(line1.b)) return
-  if (line1.m.gt(line0.m) && line1.b.gt(line0.b)) return
-
-  const dB = line1.b.sub(line0.b)
-  const dM = line0.m.sub(line1.m)
-  const x = dB.div(dM)
-  const y = line0.m.mul(x).add(line0.b)
-  // Verify that the solution is in the domain.
-  if (x.lt(line0.x0) || line0.x1.lt(x)) return
-  if (x.lt(line1.x0) || line1.x1.lt(x)) return
-  return [x, y]
+function determinant (a, b, c, d) {
+  return a.mul(d).sub(b.mul(c))
 }
 
 function max (long1, long2) {
