@@ -132,15 +132,41 @@ describe('LiquidityCurve', function () {
       assert.equal(combinedCurve.amountAt(70), 70)
     })
 
-    it('cleans up duplicate points', function () {
-      const curve1 = new LiquidityCurve([ [0, 0], [2, 2] ])
-      const curve2 = new LiquidityCurve([ [1, 0], [2, 9] ])
+    it('doesn\'t generate duplicate points', function () {
+      const curve1 = new LiquidityCurve([ [1, 0], [50000000001, 49800199999], [100000000000001, 49800199999] ])
+      const curve2 = new LiquidityCurve([ [2, 0], [50000000001, 49800199999], [100000000000001, 49800199999] ])
+      const combinedCurve = curve1.combine(curve2)
+      assert.deepStrictEqual(combinedCurve.getPoints(),
+        [ [1, 0], [2, 0], [50000000001, 49800199999], [100000000000001, 49800199999] ])
+    })
+
+    it('cleans up duplicate points caused by rounding', function () {
+      const curve1 = new LiquidityCurve([ [0, 10], [10, 10], [20, 10] ])
+      const curve2 = new LiquidityCurve([ [0, 0], [20, 21] ])
       const combinedCurve = curve1.combine(curve2)
 
       // Before rounding, the curve is:
-      // [ [0,0], [1,1], [1.125,1.125], [2,9] ]
+      // [ [0,10], [9.52‥,10], [10,10], [20,21] ]
       assert.deepStrictEqual(combinedCurve.getPoints(),
-        [ [0, 0], [1, 1], [2, 9] ])
+        [ [0, 10], [10, 10], [20, 21] ])
+
+      const curve3 = new LiquidityCurve([ [0, 1000000], [1000000, 1000000], [2000000, 1000000] ])
+      const curve4 = new LiquidityCurve([ [0, 0], [2000000, 2000001] ])
+      const combinedCurve2 = curve3.combine(curve4)
+      // Before rounding, the curve is:
+      // [ [0,0], [999999.50‥,1000000], [1000000,1000000], [2000000,2000001] ]
+      assert.deepStrictEqual(combinedCurve2.getPoints(),
+        [ [0, 1000000], [1000000, 1000000], [2000000, 2000001] ])
+    })
+
+    it('rounds x up and y down, to ensure the connector doesnt lose money', function () {
+      const curve1 = new LiquidityCurve([ [0, 0], [10, 9] ])
+      const curve2 = new LiquidityCurve([ [1, 0], [10, 20] ])
+      const combinedCurve = curve1.combine(curve2)
+      // Before rounding, the curve is:
+      // [ [0,0], [1,0], [1.6806722689075630252,1.51260504201680672268], [10,20] ]
+      assert.deepStrictEqual(combinedCurve.getPoints(),
+        [ [0, 0], [1, 0], [2, 1], [10, 20] ])
     })
 
     it('ignores an empty curve', function () {
@@ -156,12 +182,31 @@ describe('LiquidityCurve', function () {
       const result = [
         [0, 0],
         [33, 450],
-        [50, 502],
+        [51, 502],
         [66, 660],
         [100, 1000]
       ]
       assert.deepEqual(curve1.combine(curve2).getPoints(), result)
       assert.deepEqual(curve2.combine(curve1).getPoints(), result)
+    })
+
+    it('misc tests', function () {
+      const curve1 = new LiquidityCurve([[1711569, 1312840], [7503921, 6501735], [9033555, 9515658]])
+      const curve2 = new LiquidityCurve([[7647566, 8125921], [8184218, 17986167], [9460351, 18838810]])
+      const curve3 = new LiquidityCurve([[1302711, 4607848], [3449558, 6478308], [7395038, 9969362]])
+      const curve4 = new LiquidityCurve([[16576, 8209992], [271695, 12268681], [9287990, 15228960]])
+      assert.deepEqual(curve1.combine(curve2).getPoints(),
+        [[1711569, 1312840], [7503921, 6501735], [7647566, 8125921], [8184218, 17986167], [9033555, 18553648], [9460351, 18838810]])
+      assert.deepEqual(curve1.combine(curve3).getPoints(),
+        [[1302711, 4607848], [1711569, 4964069], [3449558, 6478308], [7395038, 9969362], [7503921, 9969362], [9033555, 9969362]])
+      assert.deepEqual(curve1.combine(curve4).getPoints(),
+        [[16576, 8209992], [271695, 12268681], [1711569, 12741428], [7503921, 14643204], [9033555, 15145422], [9287990, 15228960]])
+      assert.deepEqual(curve2.combine(curve3).getPoints(),
+        [[1302711, 4607848], [3449558, 6478308], [7395038, 9969362], [7647566, 9969362], [7747897, 9969362], [8184218, 17986167], [9460351, 18838810]])
+      assert.deepEqual(curve2.combine(curve4).getPoints(),
+        [[16576, 8209992], [271695, 12268681], [7647566, 14690367], [8011342, 14809803], [8184218, 17986167], [9287990, 18723647], [9460351, 18838810]])
+      assert.deepEqual(curve3.combine(curve4).getPoints(),
+        [[16576, 8209992], [271695, 12268681], [1302711, 12607189], [3449558, 13312054], [7395038, 14607455], [9287990, 15228960]])
     })
   })
 

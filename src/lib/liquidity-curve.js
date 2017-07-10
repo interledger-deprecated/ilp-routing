@@ -258,7 +258,8 @@ class LiquidityCurve {
 
 function omitInfinity (point) { return point[0].toString() !== 'Infinity' }
 function comparePoints (a, b) { return a[0].comparedTo(b[0]) }
-function roundCoords (point) { return [ point[0].floor(), point[1].floor() ] }
+// Round to ensure the connector doesn't lose money.
+function roundCoords (point) { return [ point[0].ceil(), point[1].floor() ] }
 
 function omitDuplicates (point, i, points) {
   return i === 0 || !point[0].eq(points[i - 1][0])
