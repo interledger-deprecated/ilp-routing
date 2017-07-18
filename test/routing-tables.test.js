@@ -358,6 +358,17 @@ describe('RoutingTables', function () {
       let lll = this.tables.invalidateConnector(ledgerB + 'martin')
       assert.deepStrictEqual(lll, [ledgerC])
     })
+
+    it('ignores static routes', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }, true)
+      assert.deepEqual(this.tables.invalidateConnector(ledgerB + 'mary'), [])
+    })
   })
 
   describe('invalidateConnectorsRoutesTo', function () {
@@ -390,6 +401,17 @@ describe('RoutingTables', function () {
       assertSubset(
         this.tables.findBestHopForSourceAmount(ledgerA, ledgerC, 100),
         { bestHop: ledgerB + 'mary', bestValue: '60' })
+    })
+
+    it('ignores static routes', function () {
+      this.tables.addRoute({
+        source_ledger: ledgerB,
+        destination_ledger: ledgerC,
+        source_account: ledgerB + 'mary',
+        min_message_window: 1,
+        points: [ [0, 0], [50, 60] ]
+      }, true)
+      assert.deepEqual(this.tables.invalidateConnectorsRoutesTo(ledgerB + 'mary', ledgerC), [])
     })
   })
 
