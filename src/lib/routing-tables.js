@@ -151,6 +151,9 @@ class RoutingTables {
     let lostLedgerLinks = []
     this.eachSource((table, sourceLedger) => {
       table.destinations.each((_routes, destination) => {
+        const routeToRemove = _routes.get(connectorAccount)
+        // Don't invalidate static routes.
+        if (!routeToRemove || routeToRemove.expiresAt === null) return
         if (table.removeRoute(destination, connectorAccount)) {
           lostLedgerLinks.push(destination)
         }
@@ -163,6 +166,9 @@ class RoutingTables {
     debug('invalidateConnectorsRoutesTo connectorAccount:', connectorAccount, ' ledger:', ledger)
     let lostLedgerLinks = []
     this.eachSource((table, sourceLedger) => {
+      const routeToRemove = this._getRoute(sourceLedger, ledger, connectorAccount)
+      // Don't invalidate static routes.
+      if (!routeToRemove || routeToRemove.expiresAt === null) return
       if (table.removeRoute(ledger, connectorAccount)) {
         lostLedgerLinks.push(ledger)
       }
