@@ -70,29 +70,31 @@ class RoutingTable {
       return undefined
     }
 
-    let bestHop = null
-    let bestValue = null
-    let bestRoute = null
+    let bestHop
     routes.forEach((route, nextHop) => {
-      const value = route.amountAt(sourceAmount)
       // If we have a route but not a curve, pick a route at random
       // and get a remote quote. In the future we may refactor this
       // so that multiple next hop options can be returned, and all
       // can be asked for a quote, but for now, it's just the last.
-      if (value === undefined || !bestValue || value.gt(bestValue)) {
-        bestHop = nextHop
-        bestValue = value && value.toString()
-        bestRoute = route
-      }
+      bestHop = getBetterHop(bestHop, {
+        nextHop,
+        route,
+        value: route.amountAt(sourceAmount),
+        pathLength: route.maxPathLength()
+      })
     })
 
     if (bestHop) {
-      debug('findBestHopForSourceAmount to ' + destination + ' for ' + sourceAmount + ' found route through ' + bestHop)
+      debug('findBestHopForSourceAmount to ' + destination + ' for ' + sourceAmount + ' found route through ' + bestHop.nextHop)
     } else {
       debug('findBestHopForSourceAmount could not find route to ' + destination + ' for ' + sourceAmount + '. Current routing table: ' + JSON.stringify(this.destinations.toJSON()))
     }
 
-    return { bestHop, bestValue, bestRoute }
+    return {
+      bestHop: bestHop.nextHop,
+      bestValue: bestHop.value && bestHop.value.toString(),
+      bestRoute: bestHop.route
+    }
   }
 
   findBestHopForDestinationAmount (destination, destinationAmount) {
@@ -103,30 +105,52 @@ class RoutingTable {
       return undefined
     }
 
-    let bestHop = null
-    let bestCost = Infinity
-    let bestRoute = null
+    let bestHop
     routes.forEach((route, nextHop) => {
       const cost = route.amountReverse(destinationAmount)
+      if (cost.equals(Infinity)) return
       // If we have a route but not a curve, pick a route at random
       // and get a remote quote. In the future we may refactor this
       // so that multiple next hop options can be returned, and all
       // can be asked for a quote, but for now, it's just the last.
-      if (cost === undefined || cost.lt(bestCost)) {
-        bestHop = nextHop
-        bestCost = cost && cost.toString()
-        bestRoute = route
-      }
+      bestHop = getBetterHop(bestHop, {
+        nextHop,
+        route,
+        cost,
+        pathLength: route.maxPathLength()
+      })
     })
 
     if (bestHop) {
-      debug('findBestHopForDestinationAmount to ' + destination + ' for ' + destinationAmount + ' found route through ' + bestHop)
-      return { bestHop, bestCost, bestRoute }
+      debug('findBestHopForDestinationAmount to ' + destination + ' for ' + destinationAmount + ' found route through ' + bestHop.nextHop)
+      return {
+        bestHop: bestHop.nextHop,
+        bestCost: bestHop.cost && bestHop.cost.toString(),
+        bestRoute: bestHop.route
+      }
     } else {
       debug('findBestHopForDestinationAmount could not find route to ' + destination + ' for ' + destinationAmount + '. Current routing table: ' + JSON.stringify(this.destinations.toJSON()))
       return undefined
     }
   }
+}
+
+/**
+ * If both hops score equally, return `currentHop`.
+ * It doesn't actually matter which is returned in that case, so long as it is consistent.
+ */
+function getBetterHop (currentHop, otherHop) {
+  if (!currentHop) return otherHop
+  if (currentHop.pathLength < otherHop.pathLength) return currentHop
+  if (otherHop.pathLength < currentHop.pathLength) return otherHop
+  if (otherHop.value !== undefined) {
+    return otherHop.value.gt(currentHop.value) ? otherHop : currentHop
+  }
+  if (otherHop.cost !== undefined) {
+    return otherHop.cost.lt(currentHop.cost) ? otherHop : currentHop
+  }
+  // No curve
+  return currentHop
 }
 
 module.exports = RoutingTable

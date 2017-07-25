@@ -66,7 +66,7 @@ class Route {
     // are not included in this.paths, so for instance a path:
     // * localLedger -> trustLine -> destinationLedger has this.paths === [ [] ], and path length 2
     // * localLedger -> trustLine -> anotherTrustLine -> destinationLedger has this.paths === [ ['anotherTrustLine'] ] and path length 3
-    return max + 2
+    return this.nextLedger === this.destinationLedger ? max + 2 : max + 3
   }
 
   /**

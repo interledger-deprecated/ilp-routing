@@ -6,6 +6,7 @@ const Route = require('../src/lib/route')
 
 const ledgerA = 'ledgerA.'
 const ledgerB = 'ledgerB.'
+const ledgerC = 'ledgerB.'
 const markB = ledgerB + 'mark'
 const maryB = ledgerB + 'mary'
 
@@ -75,6 +76,16 @@ describe('RoutingTable', function () {
     it('returns undefined when there is no route to the destination', function () {
       const table = new RoutingTable()
       assert.strictEqual(table.findBestHopForSourceAmount(ledgerB, 10), undefined)
+    })
+
+    it('prefers short routes', function () {
+      const table = new RoutingTable()
+      const routeMark = new Route([[0, 0], [100, 999]], {sourceLedger: ledgerA, nextLedger: ledgerB, destinationLedger: ledgerB})
+      const routeMary = new Route([[0, 0], [100, 100]], {sourceLedger: ledgerA, nextLedger: ledgerC, destinationLedger: ledgerB})
+      table.addRoute(ledgerB, markB, routeMark)
+      table.addRoute(ledgerB, ledgerC + 'mary', routeMary)
+      assert.deepEqual(table.findBestHopForSourceAmount(ledgerB, 50),
+        { bestHop: markB, bestValue: '499', bestRoute: routeMark })
     })
   })
 
