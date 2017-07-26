@@ -1,6 +1,7 @@
 'use strict'
 
 const assert = require('assert')
+const BigNumber = require('bignumber.js')
 const RoutingTable = require('../src/lib/routing-table')
 const Route = require('../src/lib/route')
 
@@ -111,6 +112,55 @@ describe('RoutingTable', function () {
       const table = new RoutingTable()
       table.addRoute(ledgerB, markB, new Route([[0, 0], [100, 100]], [ledgerA, ledgerB], {}))
       assert.strictEqual(table.findBestHopForDestinationAmount(ledgerB, 200), undefined)
+    })
+  })
+
+  describe('getBetterPath', function () {
+    const getBetterPath = RoutingTable._getBetterPath
+
+    it('returns otherPath if there is no currentPath', function () {
+      const otherPath = {}
+      assert.strictEqual(getBetterPath(null, otherPath), otherPath)
+    })
+
+    it('returns the shorter hop', function () {
+      const path1 = {pathLength: 1, value: new BigNumber(1)}
+      const path2 = {pathLength: 2, value: new BigNumber(2)}
+      assert.strictEqual(getBetterPath(path1, path2), path1)
+      assert.strictEqual(getBetterPath(path2, path1), path1)
+    })
+
+    it('returns the hop with the better value', function () {
+      const path1 = {pathLength: 1, value: new BigNumber(1)}
+      const path2 = {pathLength: 1, value: new BigNumber(2)}
+      assert.strictEqual(getBetterPath(path1, path2), path2)
+      assert.strictEqual(getBetterPath(path2, path1), path2)
+    })
+
+    it('returns otherPath when otherPath has a value and currentPath doesn\'t', function () {
+      const path1 = {pathLength: 1}
+      const path2 = {pathLength: 1, value: new BigNumber(1)}
+      assert.strictEqual(getBetterPath(path1, path2), path2)
+    })
+
+    it('returns the hop with the better cost', function () {
+      const path1 = {pathLength: 1, cost: new BigNumber(1)}
+      const path2 = {pathLength: 1, cost: new BigNumber(2)}
+      assert.strictEqual(getBetterPath(path1, path2), path1)
+      assert.strictEqual(getBetterPath(path2, path1), path1)
+    })
+
+    it('returns otherPath when otherPath has a cost and currentPath doesn\'t', function () {
+      const path1 = {pathLength: 1}
+      const path2 = {pathLength: 1, cost: new BigNumber(1)}
+      assert.strictEqual(getBetterPath(path1, path2), path2)
+    })
+
+    it('returns currentPath if neither hop has a curve', function () {
+      const path1 = {pathLength: 1}
+      const path2 = {pathLength: 1}
+      assert.strictEqual(getBetterPath(path1, path2), path1)
+      assert.strictEqual(getBetterPath(path2, path1), path2)
     })
   })
 })

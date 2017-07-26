@@ -70,13 +70,13 @@ class RoutingTable {
       return undefined
     }
 
-    let bestHop
+    let bestPath
     routes.forEach((route, nextHop) => {
       // If we have a route but not a curve, pick a route at random
       // and get a remote quote. In the future we may refactor this
       // so that multiple next hop options can be returned, and all
       // can be asked for a quote, but for now, it's just the last.
-      bestHop = getBetterHop(bestHop, {
+      bestPath = getBetterPath(bestPath, {
         nextHop,
         route,
         value: route.amountAt(sourceAmount),
@@ -84,16 +84,16 @@ class RoutingTable {
       })
     })
 
-    if (bestHop) {
-      debug('findBestHopForSourceAmount to ' + destination + ' for ' + sourceAmount + ' found route through ' + bestHop.nextHop)
+    if (bestPath) {
+      debug('findBestHopForSourceAmount to ' + destination + ' for ' + sourceAmount + ' found route through ' + bestPath.nextHop)
     } else {
       debug('findBestHopForSourceAmount could not find route to ' + destination + ' for ' + sourceAmount + '. Current routing table: ' + JSON.stringify(this.destinations.toJSON()))
     }
 
     return {
-      bestHop: bestHop.nextHop,
-      bestValue: bestHop.value && bestHop.value.toString(),
-      bestRoute: bestHop.route
+      bestHop: bestPath.nextHop,
+      bestValue: bestPath.value && bestPath.value.toString(),
+      bestRoute: bestPath.route
     }
   }
 
@@ -105,7 +105,7 @@ class RoutingTable {
       return undefined
     }
 
-    let bestHop
+    let bestPath
     routes.forEach((route, nextHop) => {
       const cost = route.amountReverse(destinationAmount)
       if (cost.equals(Infinity)) return
@@ -113,7 +113,7 @@ class RoutingTable {
       // and get a remote quote. In the future we may refactor this
       // so that multiple next hop options can be returned, and all
       // can be asked for a quote, but for now, it's just the last.
-      bestHop = getBetterHop(bestHop, {
+      bestPath = getBetterPath(bestPath, {
         nextHop,
         route,
         cost,
@@ -121,36 +121,40 @@ class RoutingTable {
       })
     })
 
-    if (bestHop) {
-      debug('findBestHopForDestinationAmount to ' + destination + ' for ' + destinationAmount + ' found route through ' + bestHop.nextHop)
+    if (bestPath) {
+      debug('findBestHopForDestinationAmount to ' + destination + ' for ' + destinationAmount + ' found route through ' + bestPath.nextHop)
       return {
-        bestHop: bestHop.nextHop,
-        bestCost: bestHop.cost && bestHop.cost.toString(),
-        bestRoute: bestHop.route
+        bestHop: bestPath.nextHop,
+        bestCost: bestPath.cost && bestPath.cost.toString(),
+        bestRoute: bestPath.route
       }
     } else {
       debug('findBestHopForDestinationAmount could not find route to ' + destination + ' for ' + destinationAmount + '. Current routing table: ' + JSON.stringify(this.destinations.toJSON()))
       return undefined
     }
   }
+
+  static _getBetterPath (currentPath, otherPath) { return getBetterPath(currentPath, otherPath) }
 }
 
 /**
- * If both hops score equally, return `currentHop`.
+ * If both hops score equally, return `currentPath`.
  * It doesn't actually matter which is returned in that case, so long as it is consistent.
  */
-function getBetterHop (currentHop, otherHop) {
-  if (!currentHop) return otherHop
-  if (currentHop.pathLength < otherHop.pathLength) return currentHop
-  if (otherHop.pathLength < currentHop.pathLength) return otherHop
-  if (otherHop.value !== undefined) {
-    return otherHop.value.gt(currentHop.value) ? otherHop : currentHop
+function getBetterPath (currentPath, otherPath) {
+  if (!currentPath) return otherPath
+  if (currentPath.pathLength < otherPath.pathLength) return currentPath
+  if (otherPath.pathLength < currentPath.pathLength) return otherPath
+  if (otherPath.value !== undefined) {
+    if (!currentPath.value) return otherPath
+    return otherPath.value.gt(currentPath.value) ? otherPath : currentPath
   }
-  if (otherHop.cost !== undefined) {
-    return otherHop.cost.lt(currentHop.cost) ? otherHop : currentHop
+  if (otherPath.cost !== undefined) {
+    if (!currentPath.cost) return otherPath
+    return otherPath.cost.lt(currentPath.cost) ? otherPath : currentPath
   }
   // No curve
-  return currentHop
+  return currentPath
 }
 
 module.exports = RoutingTable
