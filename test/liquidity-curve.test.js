@@ -26,7 +26,7 @@ describe('LiquidityCurve', function () {
 
     it('throws InvalidLiquidityCurveError if a point has a negative x-coordinate in middle of curve', function () {
       assert.throws(() => {
-        const curve = new LiquidityCurve([ [1,1], [-1, 5], [1, 5] ])
+        const curve = new LiquidityCurve([ [1, 1], [-1, 5], [1, 5] ])
       }, /InvalidLiquidityCurveError: Cannot parse negative value: -1/)
     })
 
@@ -38,7 +38,7 @@ describe('LiquidityCurve', function () {
 
     it('throws InvalidLiquidityCurveError if a point has a negative y-coordinate in middle of curve', function () {
       assert.throws(() => {
-        const curve = new LiquidityCurve([ [1,1], [2, -5], [3, 5] ])
+        const curve = new LiquidityCurve([ [1, 1], [2, -5], [3, 5] ])
       }, /InvalidLiquidityCurveError: Cannot parse negative value: -5/)
     })
 
@@ -140,6 +140,13 @@ describe('LiquidityCurve', function () {
       assert.equal(curve.amountReverse(22), 11)
       assert.equal(curve.amountReverse(110), 55)
       assert.equal(curve.amountReverse(200), 100)
+    })
+
+    it('throws an error if the y-coordinate in not an integer', function () {
+      assert.throws(() => {
+        const curve = new LiquidityCurve([[0, 0], [50, 100], [100, 1000]])
+        assert.equal(curve.amountReverse(50.5), 101)
+      }, /Curve y-coordinate must be an integer/)
     })
   })
 

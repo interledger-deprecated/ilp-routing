@@ -7,8 +7,8 @@ const BigNumber = require('bignumber.js')
 BigNumber.config({ DECIMAL_PLACES: 19 })
 
 // TODO use integer math
-function isInteger(x) {
-    return x % 1 === 0;
+function isInteger (x) {
+  return x % 1 === 0
 }
 
 class LiquidityCurve {
@@ -64,6 +64,9 @@ class LiquidityCurve {
   }
 
   amountReverse (yVal) {
+    if (!isInteger(yVal)) {
+      throw new InvalidLiquidityCurveError('Curve y-coordinate must be an integer')
+    }
     const y = bnFromValue(yVal)
     if (this.points[0][1].gte(y)) {
       return this.points[0][0]
