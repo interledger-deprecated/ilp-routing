@@ -5,7 +5,13 @@ const LiquidityCurve = require('../src/lib/liquidity-curve')
 
 describe('LiquidityCurve', function () {
   describe('constructor', function () {
-    it('saves the points', function () {
+    it('saves the points when empty', function () {
+      const points = [ ]
+      const curve = new LiquidityCurve(points)
+      assert.deepEqual(curve.getPoints(), points)
+    })
+
+    it('saves the points when non empty', function () {
       const points = [ [1, 2], [3, 4] ]
       const curve = new LiquidityCurve(points)
       assert.deepEqual(curve.getPoints(), points)
@@ -18,9 +24,21 @@ describe('LiquidityCurve', function () {
       }, /InvalidLiquidityCurveError: Cannot parse negative value: -1/)
     })
 
+    it('throws InvalidLiquidityCurveError if a point has a negative x-coordinate in middle of curve', function () {
+      assert.throws(() => {
+        const curve = new LiquidityCurve([ [1,1], [-1, 5], [1, 5] ])
+      }, /InvalidLiquidityCurveError: Cannot parse negative value: -1/)
+    })
+
     it('throws InvalidLiquidityCurveError if a point has a negative y-coordinate', function () {
       assert.throws(() => {
         const curve = new LiquidityCurve([ [1, -5], [2, 5] ])
+      }, /InvalidLiquidityCurveError: Cannot parse negative value: -5/)
+    })
+
+    it('throws InvalidLiquidityCurveError if a point has a negative y-coordinate in middle of curve', function () {
+      assert.throws(() => {
+        const curve = new LiquidityCurve([ [1,1], [2, -5], [3, 5] ])
       }, /InvalidLiquidityCurveError: Cannot parse negative value: -5/)
     })
 
@@ -94,6 +112,13 @@ describe('LiquidityCurve', function () {
     it('returns an exact "y" value when possible', function () {
       const curve = new LiquidityCurve([[0, 0], [50, 100], [100, 1000]])
       assert.equal(curve.amountAt(50), 100)
+    })
+
+    it('throws an error if the x-coordinate in not an integer', function () {
+      assert.throws(() => {
+        const curve = new LiquidityCurve([[0, 0], [50, 100], [100, 1000]])
+        assert.equal(curve.amountAt(50.5), 101)
+      }, /Curve x-coordinate must be an integer/)
     })
   })
 

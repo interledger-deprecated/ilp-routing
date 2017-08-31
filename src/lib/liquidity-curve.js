@@ -7,6 +7,10 @@ const BigNumber = require('bignumber.js')
 BigNumber.config({ DECIMAL_PLACES: 19 })
 
 // TODO use integer math
+function isInteger(x) {
+    return x % 1 === 0;
+}
+
 class LiquidityCurve {
   constructor (data) {
     if (typeof data === 'string') {
@@ -38,6 +42,9 @@ class LiquidityCurve {
   }
 
   amountAt (xVal) {
+    if (!isInteger(xVal)) {
+      throw new InvalidLiquidityCurveError('Curve x-coordinate must be an integer')
+    }
     const x = bnFromValue(xVal)
     const firstPoint = this.points[0]
     const lastPoint = this.points[this.points.length - 1]
